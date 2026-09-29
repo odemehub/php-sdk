@@ -12,7 +12,7 @@ namespace Gurmehub\Odemehub\Request;
 final readonly class SecurePayment extends Payment
 {
     public function __construct(
-        int $channelReference,
+        string $channelReference,
         string $amount,
         int $installmentNumber,
         string $ip,
@@ -20,22 +20,24 @@ final readonly class SecurePayment extends Payment
         /** Where the customer is posted back to, with the signed outcome, once they are done at their bank. */
         public string $callbackUrl,
         ?Card $card = null,
-        ?int $savedCardId = null,
+        ?string $savedCardToken = null,
         ?string $currency = null,
-        ?int $paymentProviderId = null,
-        ?int $channelId = null,
+        ?string $paymentProviderToken = null,
+        ?string $baseAmount = null,
+        ?string $channelToken = null,
     ) {
         parent::__construct(
-            $channelReference,
-            $amount,
-            $installmentNumber,
-            $ip,
-            $customer,
-            $card,
-            $savedCardId,
-            $currency,
-            $paymentProviderId,
-            $channelId,
+            channelReference: $channelReference,
+            amount: $amount,
+            installmentNumber: $installmentNumber,
+            ip: $ip,
+            customer: $customer,
+            card: $card,
+            savedCardToken: $savedCardToken,
+            currency: $currency,
+            paymentProviderToken: $paymentProviderToken,
+            baseAmount: $baseAmount,
+            channelToken: $channelToken,
         );
     }
 
@@ -47,9 +49,9 @@ final readonly class SecurePayment extends Payment
     /**
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
-        $body = parent::toArray($channelId);
+        $body = parent::toArray($channelToken);
         $body['transaction']['callback_url'] = $this->callbackUrl;
 
         return $body;

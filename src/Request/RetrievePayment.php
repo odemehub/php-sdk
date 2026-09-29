@@ -14,6 +14,6 @@ final readonly class RetrievePayment extends PaymentMessage
 {
     public function path(): string
     {
-        return 'payment';
+        return 'retrieve-payment';
     }
 }

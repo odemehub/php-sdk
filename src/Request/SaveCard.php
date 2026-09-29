@@ -19,10 +19,10 @@ final readonly class SaveCard extends ChannelMessage
         public Customer $customer,
         public Card $card,
         /** The payment account to keep the card at. Left out, the team's default account is used. */
-        public ?int $paymentProviderId = null,
-        ?int $channelId = null,
+        public ?string $paymentProviderToken = null,
+        ?string $channelToken = null,
     ) {
-        parent::__construct($channelId);
+        parent::__construct($channelToken);
     }
 
     public function path(): string
@@ -33,7 +33,7 @@ final readonly class SaveCard extends ChannelMessage
     /**
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
         $card = $this->card->toArray();
         unset($card['should_save']);
@@ -44,8 +44,8 @@ final readonly class SaveCard extends ChannelMessage
 
         return [
             'saved_card' => self::said([
-                'channel_id' => $this->channel($channelId),
-                'payment_provider_id' => $this->paymentProviderId,
+                'channel_token' => $this->channel($channelToken),
+                'payment_provider_token' => $this->paymentProviderToken,
             ]),
             'customer' => $this->customer->toArray(),
             'card' => $card,

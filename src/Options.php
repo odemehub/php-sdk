@@ -20,17 +20,17 @@ final readonly class Options
     public function __construct(
         /** The address the application is served from, e.g. https://odeme.gurmehub.com. */
         public string $baseUrl,
-        /** The slug of the team the payments are made on behalf of. */
+        /** The team the payments are made on behalf of, as the Entegrasyon page names it. */
         public string $team,
         /**
          * The channel every request speaks for: the shop, the marketplace or
          * the branch the customer reached the merchant through, by the
-         * number the team's own Kanallar page gives it. It belongs to the
+         * token the team's own Kanallar page gives it. It belongs to the
          * integration rather than to any one payment, so it is named once
          * here; a merchant selling on more than one channel may still name
          * another on a single request.
          */
-        public int $channelId,
+        public string $channelToken,
         public string $apiKey,
         public string $apiSecret,
     ) {}

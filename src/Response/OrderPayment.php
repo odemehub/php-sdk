@@ -10,16 +10,17 @@ namespace Gurmehub\Odemehub\Response;
  * becomes of the order is posted back to the merchant afterwards, the same
  * way a payment's outcome is.
  */
-final readonly class Checkout
+final readonly class OrderPayment
 {
     public function __construct(
         public Result $result,
-        /** The order's number in the gateway. */
-        public int $id,
+        /** The order's token in the gateway. */
+        public string $token,
         /** The channel the order was opened on. */
-        public int $channelId,
+        public string $channelToken,
         /** The number the order is known by in the calling system. */
         public string $channelReference,
+        /** What the order comes to, added up from its lines by the gateway. */
         public string $amount,
         public string $currency,
         /** Where the order stands: open until it is paid. */
@@ -40,8 +41,8 @@ final readonly class Checkout
 
         return new self(
             result: Result::fromArray($body),
-            id: (int) ($order['id'] ?? 0),
-            channelId: (int) ($order['channel_id'] ?? 0),
+            token: (string) ($order['token'] ?? ''),
+            channelToken: (string) ($order['channel_token'] ?? ''),
             channelReference: (string) ($order['channel_reference'] ?? ''),
             amount: (string) ($order['amount'] ?? ''),
             currency: (string) ($order['currency'] ?? ''),

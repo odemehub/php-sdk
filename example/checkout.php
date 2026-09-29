@@ -6,8 +6,8 @@ require_once __DIR__.'/page.php';
 
 use Gurmehub\Odemehub\Exception\OdemehubException;
 use Gurmehub\Odemehub\Exception\ValidationException;
-use Gurmehub\Odemehub\Request\Checkout;
 use Gurmehub\Odemehub\Request\OrderItem;
+use Gurmehub\Odemehub\Request\OrderPayment;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,9 +19,11 @@ use Gurmehub\Odemehub\Request\OrderItem;
 | ödemeyi orada yapar ve sonuç `success_url` adresine imzalı olarak POST
 | edilir — 3D dönüşüyle birebir aynı biçimde, yani return.php onu da okur.
 |
-| Sipariş kalemleri isteğe bağlıdır; yalnızca müşteriye gösterilir, ödenecek
-| tutar siparişin kendi tutarıdır. Müşteri bütün olarak gönderilir, çünkü o
-| sayfa müşteriye karttan başka bir şey sormaz.
+| Sipariş tutarı gönderilmez; geçit kalemleri toplar. Her kalem bir ürünü
+| sizdeki referansıyla adlandırır ve boş bıraktığı ad, fiyat ve KDV kayıtlı
+| üründen doldurulur. Kayıtlı olmayan bir referans için ad ve birim fiyat
+| gönderilmelidir. Müşteri bütün olarak gönderilir, çünkü o sayfa müşteriye
+| karttan başka bir şey sormaz.
 |
 */
 
@@ -32,19 +34,19 @@ $errors = [];
 
 if (isSubmitted()) {
     try {
-        $order = client()->checkout(new Checkout(
+        $order = client()->orderPayment(new OrderPayment(
             channelReference: posted('channel_reference'),
-            amount: posted('amount'),
             successUrl: posted('success_url'),
             customer: postedCustomer(),
+            items: [new OrderItem(
+                channelReference: posted('item_channel_reference'),
+                name: posted('item_name') === '' ? null : posted('item_name'),
+                quantity: posted('item_quantity') === '' ? null : (int) posted('item_quantity'),
+                unitAmount: posted('item_unit_amount') === '' ? null : posted('item_unit_amount'),
+            )],
             cancelUrl: posted('cancel_url') === '' ? null : posted('cancel_url'),
             description: posted('description') === '' ? null : posted('description'),
             currency: posted('currency') === '' ? null : posted('currency'),
-            items: [new OrderItem(
-                name: posted('item_name'),
-                quantity: (int) posted('item_quantity'),
-                unitAmount: posted('item_unit_amount'),
-            )],
         ));
 
         if ($order->result->successful) {
@@ -71,16 +73,16 @@ notice($message);
 sections([
     'Sipariş' => [
         'channel_reference' => ['Sipariş no', (string) random_int(1000, 9999)],
-        'amount' => ['Tutar', '120.00'],
         'currency' => ['Para birimi (boş: TRY)', ''],
         'description' => ['Açıklama', 'Örnek sipariş'],
         'success_url' => ['Başarı adresi', callbackUrl()],
         'cancel_url' => ['Vazgeçme adresi', 'http://localhost:8080/index.php'],
     ],
     'Kalem' => [
-        'item_name' => ['Ürün adı', 'Deneme ürünü'],
-        'item_quantity' => ['Adet', '1'],
-        'item_unit_amount' => ['Birim fiyat', '120.00'],
+        'item_channel_reference' => ['Ürün referansı', 'DENEME-1'],
+        'item_name' => ['Ürün adı (boş: kayıtlı üründen)', 'Deneme ürünü'],
+        'item_quantity' => ['Adet (boş: 1)', '1'],
+        'item_unit_amount' => ['Birim fiyat (boş: kayıtlı üründen)', '120.00'],
     ],
     'Müşteri' => customerSection(),
 ], $errors, 'Ödeme sayfasını aç');

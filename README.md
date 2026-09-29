@@ -1,6 +1,6 @@
-# Ödemehub PHP SDK
+# ödemehub PHP SDK
 
-Ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için hazırlanmış PHP istemcisi. Kart çekmek, 3D ödeme başlatmak, müşteriyi ödeme sayfasına yollamak, kart saklamak, iade ve iptal yapmak ve bir kartın taksit seçeneklerini sormak için gereken her şey burada.
+ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için hazırlanmış PHP istemcisi. Kart çekmek, 3D ödeme başlatmak, müşteriyi ödeme sayfasına yollamak, ürün kataloğunuzu eşlemek, abonelik açmak, kart saklamak, iade ve iptal yapmak ve bir kartın taksit seçeneklerini sormak için gereken her şey burada.
 
 İstemci her isteği takımınızın gizli anahtarıyla imzalar, gelen her yanıtın imzasını doğrular. Siz imza, başlık ya da JSON ayrıntılarıyla uğraşmazsınız.
 
@@ -14,7 +14,7 @@ composer require gurmehub/odemehub
 
 ## Yapılandırma
 
-Dört bilgiye ihtiyacınız var. API anahtarı ve gizli anahtar panelde **Ayarlar → Entegrasyon** sayfasında, kanal numarası **Ayarlar → Kanallar** sayfasındadır. Takım kısa adı panel adresinizde görünür.
+Dört bilgiye ihtiyacınız var. Hepsi paneldeki **Entegrasyon** sayfasındadır (menünün en altında): API anahtarı, gizli anahtar, Çalışma Alanı Kimliğiniz ve kanallarınızla ödeme hesaplarınızın token'ları.
 
 ```php
 use Gurmehub\Odemehub\Client;
@@ -22,8 +22,8 @@ use Gurmehub\Odemehub\Options;
 
 $client = new Client(new Options(
     baseUrl: 'https://odeme.gurmehub.com',
-    team: '42',                      // panel adresindeki takım kısa adı
-    channelId: 7,                    // müşterinin size ulaştığı kanal
+    team: '4829301756',              // Çalışma Alanı Kimliğiniz
+    channelToken: '6f1c2e7a-4b3d-4c8e-9a61-2f5d7b0c3e14', // müşterinin size ulaştığı kanal
     apiKey: getenv('ODEMEHUB_API_KEY'),
     apiSecret: getenv('ODEMEHUB_API_SECRET'),
 ));
@@ -31,7 +31,7 @@ $client = new Client(new Options(
 
 Gizli anahtar hiçbir zaman tel üzerinden gitmez; yalnızca imza üretmekte kullanılır. Anahtarları kodun içine yazmayın, ortam değişkeninde tutun.
 
-Kanal numarası entegrasyonun tamamı için bir kez verilir. Birden çok kanalda satıyorsanız tek bir istekte `channelId` vererek o isteği başka kanala yazdırabilirsiniz.
+Kanal token'ı entegrasyonun tamamı için bir kez verilir. Birden çok kanalda satıyorsanız tek bir istekte `channelToken` vererek o isteği başka kanala yazdırabilirsiniz. Geçit hiçbir yerde veritabanı numarası kullanmaz: kanal, ödeme hesabı, işlem, kayıtlı kart, abonelik ve sipariş her zaman token'ıyla adlanır.
 
 ## Karttan doğrudan çekim
 
@@ -41,7 +41,7 @@ Müşteriyi bankasına göndermeden çekim yapar. Başarılı yanıt, paranın a
 use Gurmehub\Odemehub\Request\{Card, Customer, RegularPayment};
 
 $payment = $client->regularPayment(new RegularPayment(
-    channelReference: 10231,          // sizdeki sipariş numarası
+    channelReference: 'SIP-10231',          // işlemin sizdeki referansı
     amount: '450.00',
     installmentNumber: 1,
     ip: $_SERVER['REMOTE_ADDR'],
@@ -66,7 +66,7 @@ $payment = $client->regularPayment(new RegularPayment(
 ));
 
 if ($payment->result->successful) {
-    // $payment->transactionId — ödemenin geçitteki numarası
+    // $payment->transactionToken — ödemenin geçitteki token'ı; iade ve iptalde bununla adlandırılır
 }
 ```
 
@@ -78,7 +78,7 @@ if ($payment->result->successful) {
 use Gurmehub\Odemehub\Request\SecurePayment;
 
 $payment = $client->securePayment(new SecurePayment(
-    channelReference: 10232,
+    channelReference: 'SIP-10232',
     amount: '450.00',
     installmentNumber: 1,
     ip: $_SERVER['REMOTE_ADDR'],
@@ -94,11 +94,13 @@ if ($payment->result->successful) {
 
 Başarılı yanıt **ödeme alındı demek değildir**; yalnızca müşterinin gideceği adres hazır demektir.
 
+Müşteriyi **15 dakika içinde** bu adrese yönlendirin. Sayfası o süre içinde açılmayan ödemenin süresi dolar (`expired`). Süresi dolmuş bağlantıyı açan müşteri doğrudan `callbackUrl` adresinize, `successful=0` ile geri gönderilir; `retrievePayment()` sorgusu da başarısız sonucu ve nedenini döner.
+
 Banka işini bitirince müşteri, tarayıcısı üzerinden `callbackUrl` adresinize döner. O POST **sonucu taşımaz**, yalnızca sonucun hazır olduğunu haber verir:
 
 | Alan | Anlamı |
 | --- | --- |
-| `transaction_id` | ödemenin geçitteki numarası |
+| `transaction_token` | ödemenin geçitteki token'ı |
 | `channel_reference` | sizin kendi referansınız |
 | `successful` | `1` / `0` — yalnızca ipucu, **güvenilmez** |
 
@@ -107,8 +109,8 @@ Sonucu kendi imzalı bağlantınızdan sorun:
 ```php
 use Gurmehub\Odemehub\Request\RetrievePayment;
 
-$outcome = $client->payment(new RetrievePayment(
-    transactionId: (int) $_POST['transaction_id'],
+$outcome = $client->retrievePayment(new RetrievePayment(
+    transactionToken: $_POST['transaction_token'],
 ));
 
 if ($outcome->result->successful) {
@@ -118,59 +120,104 @@ if ($outcome->result->successful) {
 
 Neden böyle: o POST'u bizim sunucumuz değil, müşterinin tarayıcısı gönderir; tarayıcıya imzalayacak bir sır verilemez. `successful` alanına bakıp sipariş kapatmayın — onu herkes gönderebilir; yalnız "başarısız" ipucunda gereksiz sorgudan kaçınmak için kullanın. Geçide sorduğunuz yanıt ise her zaman imzalıdır ve SDK imzayı sizin için doğrular. Başkasının işlemini sorarsanız `ValidationException` alırsınız.
 
+## Ürünler
+
+Sipariş kalemleri ve abonelikler ürünleri **sizdeki referanslarıyla** adlandırır. Ürünü panelde (Ürünler sayfası) tanımlayabilir ya da kendi kataloğunuzdan geçide yazabilirsiniz:
+
+```php
+use Gurmehub\Odemehub\Request\SaveProduct;
+
+$product = $client->saveProduct(new SaveProduct(
+    channelReference: 'KAHVE-MAKINESI',
+    name: 'Kahve makinesi',
+    type: 'simple',          // simple | recurring
+    amount: '450.00',
+    taxRate: '20',           // fiyatın içindeki KDV oranı
+));
+
+$client->saveProduct(new SaveProduct(
+    channelReference: 'PREMIUM-AYLIK',
+    name: 'Premium üyelik',
+    type: 'recurring',
+    amount: '149.90',
+    taxRate: '20',
+    period: 'monthly',       // monthly | yearly — yalnız recurring için zorunlu
+));
+```
+
+Aynı kanalda aynı referans aynı üründür: tekrar gönderirseniz ikinci ürün açılmaz, mevcut olan güncellenir. `currency` verilmezse TRY, `isActive` verilmezse `true` kabul edilir. Ürün silinmez; `isActive: false` ile satışa kapatılır.
+
+Ödeme istekleri ürünü hiçbir zaman değiştirmez; ürünün tek yazıldığı yer bu çağrı ve panel.
+
 ## Ödeme sayfası
 
 Kart bilgisini hiç görmek istemiyorsanız sipariş açıp müşteriyi geçidin kendi sayfasına yollayabilirsiniz.
 
 ```php
-use Gurmehub\Odemehub\Request\{Checkout, OrderItem};
+use Gurmehub\Odemehub\Request\{OrderItem, OrderPayment};
 
-$order = $client->checkout(new Checkout(
+$order = $client->orderPayment(new OrderPayment(
     channelReference: 'SIPARIS-10233',
-    amount: '450.00',
     successUrl: 'https://magazam.com/tesekkurler',
     cancelUrl: 'https://magazam.com/sepet',
     customer: $customer,
-    items: [new OrderItem(name: 'Kahve makinesi', quantity: 1, unitAmount: '450.00')],
+    items: [
+        new OrderItem(channelReference: 'KAHVE-MAKINESI'),
+        new OrderItem(channelReference: 'KAHVE-500G', quantity: 2, unitAmount: '180.00'),
+        new OrderItem(channelReference: 'HEDIYE-PAKETI', name: 'Hediye paketi', unitAmount: '25.00'),
+    ],
 ));
 
 header('Location: '.$order->checkoutUrl);
 ```
 
-Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `payment()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
+Sipariş tutarını göndermezsiniz; geçit kalemleri toplar ve `$order->amount` olarak döner. Bir kalemin boş bıraktığı ad, fiyat ve KDV oranı kayıtlı üründen gelir; kalemde verdiğiniz değerler yalnızca o sipariş için geçerlidir, ürünü değiştirmez. Kayıtlı olmayan bir referansla da kalem gönderebilirsiniz, ama o zaman `name` ve `unitAmount` zorunludur.
+
+Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `retrievePayment()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
 
 ## Abonelikler
 
-Müşteriden dönem dönem tahsilat yapmak için abonelik açarsınız. Neye abone olunduğu panelde tanımladığınız **abonelik ürünüdür** (Ürünler sayfası); tutarı, para birimini ve dönemini ürün taşır, burada göndermezsiniz.
+Müşteriden dönem dönem tahsilat yapmak için abonelik açarsınız. Neye abone olunduğu bir ya da birkaç **abonelik ürünüdür** (`type: 'recurring'`), sizdeki referanslarıyla adlandırılır; fiyatı, para birimini ve dönemini ürün taşır. Aynı aboneliğe konan ürünlerin dönemi ve para birimi aynı olmalıdır.
 
 ```php
-use Gurmehub\Odemehub\Request\Subscription;
+use Gurmehub\Odemehub\Request\{SubscriptionItem, SubscriptionPayment};
 
-$subscription = $client->subscriptionPayment(new Subscription(
-    productId: 7,
+$subscription = $client->subscriptionPayment(new SubscriptionPayment(
     channelReference: 'UYELIK-4471',
+    items: [
+        new SubscriptionItem(channelReference: 'PREMIUM-AYLIK'),
+        new SubscriptionItem(channelReference: 'EK-KULLANICI', quantity: 3),
+    ],
     successUrl: 'https://magazam.com/tesekkurler',
     customer: $customer,
 ));
 
+$subscription->token; // aboneliği sonra sorgulamak ve iptal etmek için saklayın
+
 header('Location: '.$subscription->checkoutUrl);
 ```
 
-İlk ödeme her zaman geçidin kendi sayfasında yapılır ve kart zorunlu olarak saklanır: sonraki dönemler o karttan çekilir. Ödeme tamamlanınca müşteri `successUrl` adresinize döner ve sonucu yine `payment()` ile sorarsınız; abonelik `active` olur ve aşağıdaki bildirim de gider.
+Bir kaleme `unitAmount` verirseniz o fiyat **yalnızca ilk dönem** için geçerlidir (ör. ilk ay yarı fiyat); sonraki dönemler ürünün kendi fiyatından çekilir.
 
-Dönem bitince yeni dönem açılır ve müşterinin varsayılan kartından çekilir. Banka kabul etmezse çekim bir buçuk gün içinde beş kez denenir (araları 3, 6, 9 ve 12 saat); bu sırada abonelik `active` kalır. Beşinci deneme de olmazsa abonelik `past_due` olur ve müşteriye, o dönemi dilediği kartla ödeyebileceği bağlantı e-postayla gider. Süre sınırı yoktur; müşteri ödediği anda abonelik kaldığı yerden devam eder.
+İlk ödeme her zaman geçidin kendi sayfasında yapılır ve kart zorunlu olarak saklanır: sonraki dönemler o karttan çekilir. Ödeme tamamlanınca müşteri `successUrl` adresinize döner ve sonucu yine `retrievePayment()` ile sorarsınız; abonelik `active` olur ve aşağıdaki bildirim de gider.
+
+Dönem bitince yeni dönem açılır ve müşterinin varsayılan kartından çekilir. Banka kabul etmezse çekim bir buçuk gün içinde beş kez denenir (araları 3, 6, 9 ve 12 saat); bu sırada abonelik `active` kalır. Beşinci deneme de olmazsa abonelik `past_due` olur; çalışma alanı yöneticilerinize e-posta, `webhookUrl` adresinize bildirim gider. İkisi de o dönemin dilediği kartla ödenebileceği bağlantıyı taşır; bağlantıyı müşterinize siz iletirsiniz. Süre sınırı yoktur; müşteri ödediği anda abonelik kaldığı yerden devam eder.
 
 Aboneliğin durumunu sorabilirsiniz:
 
 ```php
 use Gurmehub\Odemehub\Request\RetrieveSubscription;
 
-$subscription = $client->subscription(new RetrieveSubscription(subscriptionId: 41));
+$subscription = $client->retrieveSubscription(new RetrieveSubscription(subscriptionToken: $token));
 
 echo $subscription->status;      // pending | active | past_due | cancelled
 echo $subscription->amount;      // 149.90 — içinde bulunulan dönemin fiyatı
 echo $subscription->endsAt;      // sonraki tahsilat zamanı
 echo $subscription->checkoutUrl; // ödenmemiş dönem varsa müşteriye verilecek adres
+
+foreach ($subscription->items as $item) {
+    echo "{$item->quantity} x {$item->name} ({$item->channelReference})";
+}
 
 if ($subscription->isPastDue()) {
     // müşteriyi kendi ödeme sayfanızda uyarabilirsiniz
@@ -184,7 +231,7 @@ Tutar, aboneliğin **içinde bulunduğu dönemin** fiyatıdır. Ürünün fiyat�
 ```php
 use Gurmehub\Odemehub\Request\CancelSubscription;
 
-$subscription = $client->cancelSubscription(new CancelSubscription(subscriptionId: 41));
+$subscription = $client->cancelSubscription(new CancelSubscription(subscriptionToken: $token));
 
 $subscription->cancelledAt;  // iptal edildiği an
 $subscription->endsAt;       // hizmetin süreceği son gün
@@ -193,18 +240,18 @@ $subscription->isCancelled(); // ödenmiş dönem sürüyorsa henüz false
 
 Müşteri, ödediği dönemin sonuna kadar hizmeti almaya devam eder; o güne kadar abonelik `active` görünür, dönem bitince `cancelled` olur ve bir daha tahsilat yapılmaz. Ödenmemiş bir aboneliğin (ilk ödemesi yapılmamış ya da `past_due`) iptali hemen geçerlidir. İade yapılmaz.
 
-Aboneliğin açılabilmesi için varsayılan ödeme hesabınızın kart saklayabiliyor olması gerekir; saklamayan bir hesapla açmaya çalışırsanız istek `subscription.payment_provider_id` alanında reddedilir.
+Aboneliğin açılabilmesi için varsayılan ödeme hesabınızın kart saklayabiliyor olması gerekir; saklamayan bir hesapla açmaya çalışırsanız istek `subscription.payment_provider_token` alanında reddedilir.
 
 ### Abonelik bildirimleri (webhook)
 
 Abonelik açarken `webhookUrl` verirseniz, aboneliğin durumu her değiştiğinde o adrese imzalı bir POST gönderilir. Gövde düz JSON'dur ve imza `X-Signature` başlığındadır — yani geçidin API yanıtlarıyla aynı yöntem.
 
 ```php
-use Gurmehub\Odemehub\Request\Subscription;
+use Gurmehub\Odemehub\Request\{SubscriptionItem, SubscriptionPayment};
 
-$subscription = $client->subscriptionPayment(new Subscription(
-    productId: 7,
+$subscription = $client->subscriptionPayment(new SubscriptionPayment(
     channelReference: 'UYELIK-4471',
+    items: [new SubscriptionItem(channelReference: 'PREMIUM-AYLIK')],
     successUrl: 'https://magazam.com/tesekkurler',
     customer: $customer,
     webhookUrl: 'https://magazam.com/odemehub/abonelik',
@@ -249,6 +296,38 @@ Gönderilen olaylar aboneliğin **durumudur**, yapılan işlem değil:
 
 2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; bildirim 5 dakika sonra bir kez daha denenir. Ulaşmayan bildirimler panelde aboneliğin sayfasında HTTP kodu ve yanıtıyla listelenir.
 
+## Ödeme hangi hesaptan geçer
+
+`paymentProviderToken` verirseniz ödeme o hesaptan geçer; sipariş ve abonelik açarken de aynı parametre vardır ve müşteri ödeme sayfasında o hesaptan öder. Vermezseniz hesabı çalışma alanınız seçer: panelde **Ödeme Ayarları → Gate (Yönlendirme)** altındaki kurallar sırayla denenir ve ödemenin karşıladığı ilk kural hesabı belirler. Kurallar kartın bankasına, şemasına, programına, tipine, ticari kart olup olmadığına, tutara ve para birimine bakabilir. Hiçbir kural tutmazsa ödeme varsayılan hesaptan geçer.
+
+- Kuralın hesabı ödemeyi alamıyorsa (ödeme türünü ya da para birimini desteklemiyorsa) o kural atlanır.
+- Kayıtlı kartla ödeme her zaman kartın saklandığı hesaptan geçer.
+- Taksitleri `retrieveBin()` ile gösteriyorsanız orada da hesap vermeyin: taksitler ödemenin gideceği hesaptan gelir ve çekilen tutar gösterdiğinizle aynı olur.
+
+## Kur çevirisi
+
+Panelde **Ödeme Ayarları → Kur Çevirici** altında bir kural tanımladıysanız, o para biriminde gelen ödeme karttan kuralın para biriminde çekilir. Örneğin 100 USD istersiniz, karttan 4.985,56 TRY çekilir. Kur, TCMB'nin güncel döviz satış kuru ve üzerine eklediğiniz marjdır ya da sizin girdiğiniz sabit kurdur.
+
+İsteğinizde hiçbir şey değişmez: tutarı ve para birimini her zamanki gibi gönderirsiniz. Yanıttaki `conversion` karttan ne çekildiğini söyler:
+
+```php
+$payment = $client->regularPayment(new RegularPayment(
+    amount: '100.00',
+    currency: 'USD',
+    // ...
+));
+
+if ($payment->conversion !== null) {
+    echo $payment->conversion->amount;   // 4985.56
+    echo $payment->conversion->currency; // TRY
+    echo $payment->conversion->rate;     // 49.855560
+}
+```
+
+- Çevrilmeyen ödemede `conversion` `null` gelir. `retrievePayment()` aynı bilgiyi yeniden verir.
+- İade tutarını çekilen para biriminde gönderin (yukarıdaki örnekte TRY).
+- Güncel kur alınamıyorsa ödeme alınmaz; `422` ile `transaction.currency` alanında hata döner. Birkaç dakika sonra tekrar deneyin.
+
 ## Kart sorgusu ve taksitler
 
 Kart numarasının ilk hanelerinden kartın kim tarafından verildiğini, hangi programa ait olduğunu ve tutarın kaç taksite bölünebileceğini sorar. Hiçbir şey çekilmez.
@@ -285,11 +364,13 @@ Sorgu başarısız dönebilir: kart tanınmıyor olabilir ya da hesabınızın s
 | `amount` | **Karttan çekilecek** tutar. Vade farkı varsa içindedir. |
 | `baseAmount` | **Sattığınız** tutar, vade farkından önceki hâli. Gönderilmezse `amount` ile aynı kabul edilir. |
 
+Taksit yalnızca Türk Lirası ödemelerde yapılır. USD, EUR ya da GBP ödemede `installmentNumber` `1` olmalıdır ve `retrieveBin()` taksit listesini boş döner; kur çevirisiyle TRY'den başka bir para birimine çekilen ödeme için de aynısı geçerlidir.
+
 Taksitsiz satışta ikisi eşittir ve `baseAmount` göndermenize gerek yoktur. Taksitli satışta `retrieveBin` size o taksidin toplamını verir; onu `amount` olarak, sattığınız tutarı `baseAmount` olarak gönderin:
 
 ```php
 $payment = $client->regularPayment(new RegularPayment(
-    channelReference: 10234,
+    channelReference: 'SIP-10234',
     amount: '473.60',        // 3 taksitin toplamı
     baseAmount: '450.00',    // satılan tutar
     installmentNumber: 3,
@@ -316,35 +397,38 @@ $musteri = new NamedCustomer(channelReference: 'musteri-88');
 $cards = $client->savedCards(new SavedCards(customer: $musteri));
 
 // Varsayılan yapma / silme
-$client->defaultSavedCard(new DefaultSavedCard(customer: $musteri, savedCardId: 12));
-$client->deleteSavedCard(new DeleteSavedCard(customer: $musteri, savedCardId: 12));
+$token = $cards->savedCards[0]->token;
+
+$client->defaultSavedCard(new DefaultSavedCard(customer: $musteri, savedCardToken: $token));
+$client->deleteSavedCard(new DeleteSavedCard(customer: $musteri, savedCardToken: $token));
 ```
 
-Kayıtlı kartla ödeme alırken `card` yerine kartın numarasını verin:
+Kayıtlı kartla ödeme alırken `card` yerine kartın token'ını verin:
 
 ```php
 $payment = $client->regularPayment(new RegularPayment(
-    channelReference: 10235,
+    channelReference: 'SIP-10235',
     amount: '120.00',
     installmentNumber: 1,
     ip: $_SERVER['REMOTE_ADDR'],
     customer: $customer,
-    savedCardId: 12,
+    savedCardToken: $token,
 ));
 ```
 
-Kart saklayan bir ödemenin yanıtında `$payment->savedCard` dolu gelir; kartın numarasını oradan öğrenirsiniz.
+Kart saklayan bir ödemenin yanıtında `$payment->savedCard` dolu gelir; kartın token'ını oradan öğrenirsiniz. Kart her yerde token ile adlandırılır.
 
 ## İade ve iptal
 
 ```php
-use Gurmehub\Odemehub\Request\{Cancel, Refund};
+use Gurmehub\Odemehub\Request\{CancelPayment, RefundPayment};
 
 // Gün sonu almamış ödemenin tamamını geri alır
-$client->cancel(new Cancel(transactionId: 8821));
+$client->cancelPayment(new CancelPayment(transactionToken: $payment->transactionToken));
 
-// Tutar verilirse kısmi, verilmezse kalanın tamamı iade edilir
-$client->refund(new Refund(transactionId: 8821, amount: '100.00'));
+// Tutar verilirse kısmi, verilmezse kalanın tamamı iade edilir.
+// Kur çevirisiyle çekilen ödemede tutar çekilen para birimindedir.
+$client->refundPayment(new RefundPayment(transactionToken: $payment->transactionToken, amount: '100.00'));
 ```
 
 ## Hatalar
@@ -367,7 +451,7 @@ Ağ hatasında ödemeyi körlemesine tekrarlamayın: `TransportException` "olmad
 
 ```bash
 cd example
-ODEMEHUB_BASE_URL=https://odeme.gurmehub.com ODEMEHUB_TEAM=42 ODEMEHUB_CHANNEL_ID=7 ODEMEHUB_API_KEY=... ODEMEHUB_API_SECRET=... php -S localhost:8080
+ODEMEHUB_BASE_URL=https://odeme.gurmehub.com ODEMEHUB_TEAM=4829301756 ODEMEHUB_CHANNEL_TOKEN=6f1c2e7a-4b3d-4c8e-9a61-2f5d7b0c3e14 ODEMEHUB_API_KEY=... ODEMEHUB_API_SECRET=... php -S localhost:8080
 ```
 
 Sonra `http://localhost:8080/index.php` adresini açın. 3D denemesi yapacaksanız bankanın döneceği adresi de verin: `ODEMEHUB_CALLBACK_URL=http://localhost:8080/return.php`.

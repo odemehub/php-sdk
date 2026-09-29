@@ -15,14 +15,14 @@ abstract readonly class ChannelMessage extends Message
 {
     public function __construct(
         /** The channel this one message speaks for. Left out, the client's own is used. */
-        public ?int $channelId = null,
+        public ?string $channelToken = null,
     ) {}
 
     /**
      * The channel this message is for: the one it names, or the client's.
      */
-    protected function channel(int $channelId): int
+    protected function channel(string $channelToken): string
     {
-        return $this->channelId ?? $channelId;
+        return $this->channelToken ?? $channelToken;
     }
 }

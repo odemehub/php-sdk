@@ -17,8 +17,8 @@ final readonly class GiveBack extends Payment
 {
     public function __construct(
         Result $result,
-        int $transactionId,
-        int $channelId,
+        string $transactionToken,
+        string $channelToken,
         string $channelReference,
         string $customerChannelReference,
         /** Which of the two it was: a cancellation or a refund. */
@@ -26,8 +26,9 @@ final readonly class GiveBack extends Payment
         /** How much actually went back, whether or not it was asked for by name. */
         public ?string $amount = null,
         ?SavedCard $savedCard = null,
+        ?Conversion $conversion = null,
     ) {
-        parent::__construct($result, $transactionId, $channelId, $channelReference, $customerChannelReference, $savedCard);
+        parent::__construct($result, $transactionToken, $channelToken, $channelReference, $customerChannelReference, $savedCard, $conversion);
     }
 
     /**

@@ -17,8 +17,13 @@ use InvalidArgumentException;
 abstract readonly class Payment extends ChannelMessage
 {
     public function __construct(
-        /** The number the order is known by in the calling system. */
-        public int $channelReference,
+        /**
+         * The reference the payment is known by in the calling system, such
+         * as SIP-10231. It has to carry at least one digit: its digits end
+         * the order number the bank is sent,
+         * so the payment can be found in the bank's panel by it.
+         */
+        public string $channelReference,
         /**
          * The amount, as digits with the kurus behind a point: '100', '100.1'
          * or '100.10'. A comma is refused. It is a string so that it is
@@ -32,25 +37,30 @@ abstract readonly class Payment extends ChannelMessage
         public Customer $customer,
         /** The card typed in. Left out only when a kept card is named instead. */
         public ?Card $card = null,
-        /** A card the customer let the merchant keep, by the number the gateway gave it. */
-        public ?int $savedCardId = null,
+        /** A card the customer let the merchant keep, by the token the gateway gave it. */
+        public ?string $savedCardToken = null,
         /** Three letters, e.g. TRY. Left out, the gateway takes the lira. */
         public ?string $currency = null,
-        /** The payment account to charge through. Left out, the team's default account is used. */
-        public ?int $paymentProviderId = null,
+        /**
+         * The payment account to charge through. Left out, the team's routing
+         * rules pick the account, and the team's default account is used when
+         * none of them holds. A payment with a kept card always goes through
+         * the account the card is kept at.
+         */
+        public ?string $paymentProviderToken = null,
         /**
          * What is being sold, where the customer spreads the amount over
          * months and the bank takes something for the waiting on top of it.
          * Left out where the two are the same, which is most payments.
          */
         public ?string $baseAmount = null,
-        ?int $channelId = null,
+        ?string $channelToken = null,
     ) {
-        if (($this->card === null) === ($this->savedCardId === null)) {
+        if (($this->card === null) === ($this->savedCardToken === null)) {
             throw new InvalidArgumentException('Bir ödeme ya bir kartla ya da kayıtlı bir kartla yapılır; ikisi birden ya da hiçbiri verilemez.');
         }
 
-        parent::__construct($channelId);
+        parent::__construct($channelToken);
     }
 
     /**
@@ -60,19 +70,19 @@ abstract readonly class Payment extends ChannelMessage
      *
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
         $body = [
             'transaction' => self::said([
-                'channel_id' => $this->channel($channelId),
+                'channel_token' => $this->channel($channelToken),
                 'channel_reference' => $this->channelReference,
-                'payment_provider_id' => $this->paymentProviderId,
+                'payment_provider_token' => $this->paymentProviderToken,
                 'amount' => $this->amount,
                 ...($this->baseAmount === null ? [] : ['base_amount' => $this->baseAmount]),
                 'currency' => $this->currency,
                 'installment_number' => $this->installmentNumber,
                 'ip' => $this->ip,
-                'saved_card_id' => $this->savedCardId,
+                'saved_card_token' => $this->savedCardToken,
             ]),
             'customer' => $this->customer->toArray(),
         ];

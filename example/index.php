@@ -19,7 +19,7 @@ require_once __DIR__.'/page.php';
 |
 */
 
-pageStart('Ödemehub örneği');
+pageStart('ödemehub örneği');
 
 echo '<p class="lead">Ödeme geçidine gerçek bir istek atılır. Kimlik bilgileri ve kanal config.php dosyasındadır.</p>';
 

@@ -1,6 +1,6 @@
 {
     "name": "gurmehub/odemehub",
-    "description": "Ödemehub ödeme geçidi için PHP istemcisi.",
+    "description": "ödemehub ödeme geçidi için PHP istemcisi.",
     "type": "library",
     "license": "proprietary",
     "require": {

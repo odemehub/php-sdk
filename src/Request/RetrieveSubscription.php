@@ -12,6 +12,6 @@ final readonly class RetrieveSubscription extends SubscriptionMessage
 {
     public function path(): string
     {
-        return 'subscription';
+        return 'retrieve-subscription';
     }
 }

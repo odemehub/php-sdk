@@ -6,22 +6,22 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * Something asked of a payment that has already been made. The payment is
- * named by the number the gateway gave it, and nothing else is sent: the
+ * named by the token the gateway gave it, and nothing else is sent: the
  * gateway holds the account, the provider, the channel and the reference
  * the provider knows the payment by.
  */
 abstract readonly class PaymentMessage extends Message
 {
     public function __construct(
-        /** The payment's number in the gateway, as it answered when the payment was made. */
-        public int $transactionId,
+        /** The payment's token in the gateway, as it answered when the payment was made. */
+        public string $transactionToken,
     ) {}
 
     /**
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
-        return ['transaction_id' => $this->transactionId];
+        return ['transaction' => ['token' => $this->transactionToken]];
     }
 }

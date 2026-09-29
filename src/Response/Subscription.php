@@ -16,17 +16,18 @@ namespace Gurmehub\Odemehub\Response;
  */
 final readonly class Subscription
 {
+    /**
+     * @param  list<SubscriptionItem>  $items  What is subscribed to.
+     */
     public function __construct(
         public Result $result,
-        /** The subscription's number in the gateway; name it here to ask after it later. */
-        public int $id,
+        /** The subscription's token in the gateway; name it here to ask after it later. */
+        public string $token,
         /** The channel the subscription was opened on. */
-        public int $channelId,
+        public string $channelToken,
         /** The key the subscription is known by in the calling system. */
         public string $channelReference,
-        /** The recurring product being subscribed to. */
-        public int $productId,
-        public string $productName,
+        public array $items,
         /** Where it stands: pending, active, past_due or cancelled. */
         public string $status,
         /** How often a period comes round: monthly or yearly. */
@@ -98,11 +99,13 @@ final readonly class Subscription
 
         return new self(
             result: Result::fromArray($body),
-            id: (int) ($subscription['id'] ?? 0),
-            channelId: (int) ($subscription['channel_id'] ?? 0),
+            token: (string) ($subscription['token'] ?? ''),
+            channelToken: (string) ($subscription['channel_token'] ?? ''),
             channelReference: (string) ($subscription['channel_reference'] ?? ''),
-            productId: (int) ($subscription['product_id'] ?? 0),
-            productName: (string) ($subscription['product_name'] ?? ''),
+            items: array_values(array_map(
+                static fn (mixed $item): SubscriptionItem => SubscriptionItem::fromArray(is_array($item) ? $item : []),
+                is_array($subscription['items'] ?? null) ? $subscription['items'] : [],
+            )),
             status: (string) ($subscription['status'] ?? ''),
             period: (string) ($subscription['period'] ?? ''),
             amount: (string) ($subscription['amount'] ?? ''),

@@ -22,13 +22,13 @@ use Gurmehub\Odemehub\Request\RetrievePayment;
 
 pageStart('Ödeme sonucu');
 
-$transactionId = (int) ($_POST['transaction_id'] ?? 0);
+$transactionToken = (string) ($_POST['transaction_token'] ?? '');
 
-if ($transactionId === 0) {
-    notice('Dönüşte işlem numarası yok.');
+if ($transactionToken === '') {
+    notice("Dönüşte işlem token'ı yok.");
 } else {
     try {
-        paymentResult(client()->payment(new RetrievePayment(transactionId: $transactionId)));
+        paymentResult(client()->retrievePayment(new RetrievePayment(transactionToken: $transactionToken)));
     } catch (OdemehubException $exception) {
         notice($exception->getMessage());
     }

@@ -9,7 +9,7 @@ namespace Gurmehub\Odemehub\Request;
  * There is no amount to name: a cancellation is always for the whole of the
  * payment, and anything less goes back as a refund.
  */
-final readonly class Cancel extends GiveBack
+final readonly class CancelPayment extends GiveBack
 {
     public function path(): string
     {

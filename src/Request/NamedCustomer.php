@@ -20,10 +20,10 @@ final readonly class NamedCustomer
     /**
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
         return [
-            'channel_id' => $channelId,
+            'channel_token' => $channelToken,
             'channel_reference' => $this->channelReference,
         ];
     }

@@ -25,8 +25,8 @@ function client(): Client
 {
     return new Client(new Options(
         baseUrl: getenv('ODEMEHUB_BASE_URL') ?: 'http://localhost:8000',
-        team: getenv('ODEMEHUB_TEAM') ?: '1',
-        channelId: (int) (getenv('ODEMEHUB_CHANNEL_ID') ?: 1),
+        team: getenv('ODEMEHUB_TEAM') ?: '1000000001',
+        channelToken: getenv('ODEMEHUB_CHANNEL_TOKEN') ?: '00000000-0000-4000-8000-000000000001',
         apiKey: getenv('ODEMEHUB_API_KEY') ?: 'key_seeded_development_credential_do_not_use',
         apiSecret: getenv('ODEMEHUB_API_SECRET') ?: 'secret_seeded_development_credential_do_not_use',
     ));
@@ -49,8 +49,8 @@ function callbackUrl(): string
  *
  * Only the providers whose flow the gateway actually carries are listed: an
  * account whose provider is not implemented yet is turned down before the
- * payment is even attempted. The numbers are the ones the seeder left
- * behind, so they follow the database rather than this file.
+ * payment is even attempted. The tokens are the ones the seeder gives
+ * each account, worked out from its provider, so they survive a rebuild.
  *
  * @return array<string, array<string, string>>
  */
@@ -58,7 +58,7 @@ function accounts(): array
 {
     return [
         'iyzico' => [
-            'payment_provider_id' => '1',
+            'payment_provider_token' => '4acda421-0678-55bd-8c5a-fbd0e4aa543b',
             'card_number' => '5526080000000006',
             'card_security_code' => '000',
             'card_expiry_month' => '12',
@@ -66,7 +66,7 @@ function accounts(): array
             'secure_password' => '283126',
         ],
         'Akbank' => [
-            'payment_provider_id' => '2',
+            'payment_provider_token' => '5830c66c-9760-5f4f-b13a-5a7e97a5a76f',
             'card_number' => '4546711234567894',
             'card_security_code' => '000',
             'card_expiry_month' => '12',
@@ -74,7 +74,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'İş Bankası' => [
-            'payment_provider_id' => '3',
+            'payment_provider_token' => 'c5a3833d-dbf0-584a-b1fb-518eeee7a180',
             'card_number' => '4546711234567894',
             'card_security_code' => '000',
             'card_expiry_month' => '12',
@@ -82,7 +82,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'Paratika' => [
-            'payment_provider_id' => '12',
+            'payment_provider_token' => '4d2e1722-1f60-57ad-a8c1-2ea4cc57eca9',
             'card_number' => '4508034508034509',
             'card_security_code' => '000',
             'card_expiry_month' => '12',
@@ -90,7 +90,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'Sipay' => [
-            'payment_provider_id' => '18',
+            'payment_provider_token' => 'ab73c383-c21a-5ea9-8ec2-7adbefb24652',
             'card_number' => '4048095010857528',
             'card_security_code' => '000',
             'card_expiry_month' => '05',
@@ -98,7 +98,7 @@ function accounts(): array
             'secure_password' => '34020',
         ],
         'QNBPay' => [
-            'payment_provider_id' => '20',
+            'payment_provider_token' => '2d52a187-ca4d-5bc1-a9a5-ab6863c44581',
             'card_number' => '4022780520669303',
             'card_security_code' => '988',
             'card_expiry_month' => '01',
@@ -106,7 +106,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'Akbank JSON' => [
-            'payment_provider_id' => '4',
+            'payment_provider_token' => '325c5ad4-0f1e-5ba3-ba9c-73b535903ac4',
             'card_number' => '4355093000777068',
             'card_security_code' => '941',
             'card_expiry_month' => '06',
@@ -114,7 +114,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'QNB Finansbank' => [
-            'payment_provider_id' => '5',
+            'payment_provider_token' => '4f981d01-8e51-5dad-b96b-4665d6fbad20',
             'card_number' => '4155650100416111',
             'card_security_code' => '123',
             'card_expiry_month' => '01',
@@ -122,7 +122,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'Garanti' => [
-            'payment_provider_id' => '6',
+            'payment_provider_token' => 'd9a6736c-1ab7-507f-8919-cad460744568',
             'card_number' => '4282209004348015',
             'card_security_code' => '123',
             'card_expiry_month' => '08',
@@ -130,7 +130,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'Kuveyt Türk' => [
-            'payment_provider_id' => '8',
+            'payment_provider_token' => '7e87a1c5-9a88-5641-8e68-f981608b2256',
             'card_number' => '5188961939192544',
             'card_security_code' => '588',
             'card_expiry_month' => '06',
@@ -138,7 +138,7 @@ function accounts(): array
             'secure_password' => '123456',
         ],
         'Vakıfbank' => [
-            'payment_provider_id' => '9',
+            'payment_provider_token' => '92c9fcc9-9c6e-5ee9-aa8b-b6fb3698866f',
             'card_number' => '5521010140829928',
             'card_security_code' => '691',
             'card_expiry_month' => '12',
@@ -146,7 +146,7 @@ function accounts(): array
             'secure_password' => '123456',
         ],
         'EsnekPos' => [
-            'payment_provider_id' => '13',
+            'payment_provider_token' => '0214afc8-ce95-5f3a-aefa-f38cb501d8a6',
             'card_number' => '9792100000000001',
             'card_security_code' => '000',
             'card_expiry_month' => '12',
@@ -154,7 +154,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'Lidio' => [
-            'payment_provider_id' => '15',
+            'payment_provider_token' => '7151c0c4-6830-5e61-b83f-ec949d5d54e7',
             'card_number' => '5404355404355405',
             'card_security_code' => '001',
             'card_expiry_month' => '12',
@@ -162,7 +162,7 @@ function accounts(): array
             'secure_password' => '',
         ],
         'İşyerimPOS' => [
-            'payment_provider_id' => '25',
+            'payment_provider_token' => '037739ad-5518-5ae6-9bf1-c23270ce4b5d',
             'card_number' => '5818775818772285',
             'card_security_code' => '001',
             'card_expiry_month' => '12',

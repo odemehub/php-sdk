@@ -29,13 +29,13 @@ use Gurmehub\Odemehub\Response\Payment;
 function dummy(): array
 {
     return [
-        'channel_reference' => (string) random_int(1000, 9999),
+        'channel_reference' => 'SIP-'.random_int(1000, 9999),
         'amount' => '100.50',
         'base_amount' => '',
         'currency' => 'TRY',
         'installment_number' => '1',
         'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-        'payment_provider_id' => '',
+        'payment_provider_token' => '',
 
         'customer_channel_reference' => 'musteri-1',
         'customer_firstname' => 'Ahmet',
@@ -73,7 +73,7 @@ function fields(): array
             'currency' => 'Para birimi',
             'installment_number' => 'Taksit',
             'ip' => 'Müşterinin IP adresi',
-            'payment_provider_id' => 'Ödeme hesabı no',
+            'payment_provider_token' => 'Ödeme hesabı token',
         ],
         'Müşteri' => [
             'customer_channel_reference' => 'Müşteri no (sizdeki)',
@@ -104,7 +104,7 @@ function fields(): array
  */
 function optionalFields(): array
 {
-    return ['payment_provider_id', 'currency'];
+    return ['payment_provider_token', 'currency'];
 }
 
 /**
@@ -165,7 +165,7 @@ function postedCard(): Card
 function postedPayment(): array
 {
     return [
-        'channelReference' => (int) posted('channel_reference'),
+        'channelReference' => posted('channel_reference'),
         'amount' => posted('amount'),
         'baseAmount' => posted('base_amount') === '' ? null : posted('base_amount'),
         'installmentNumber' => (int) posted('installment_number'),
@@ -173,7 +173,7 @@ function postedPayment(): array
         'customer' => postedCustomer(),
         'card' => postedCard(),
         'currency' => posted('currency') === '' ? null : posted('currency'),
-        'paymentProviderId' => posted('payment_provider_id') === '' ? null : (int) posted('payment_provider_id'),
+        'paymentProviderToken' => posted('payment_provider_token') === '' ? null : posted('payment_provider_token'),
     ];
 }
 
@@ -196,7 +196,7 @@ function pageStart(string $title): void
 
     echo '<!doctype html><html lang="tr"><head><meta charset="utf-8">';
     echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
-    echo '<title>'.e($title).' — Ödemehub örneği</title>';
+    echo '<title>'.e($title).' — ödemehub örneği</title>';
     echo '<style>
         :root { color-scheme: light dark; }
         body { margin: 0; padding: 2rem 1rem; font: 15px/1.5 system-ui, sans-serif; }
@@ -394,14 +394,14 @@ function paymentResult(Payment $payment, array $extra = []): void
 
     echo '<table>';
     echo '<tr><td>result.successful</td><td>'.var_export($payment->result->successful, true).'</td></tr>';
-    echo '<tr><td>transaction.id</td><td>'.$payment->transactionId.'</td></tr>';
-    echo '<tr><td>transaction.channel_id</td><td>'.$payment->channelId.'</td></tr>';
+    echo '<tr><td>transaction.token</td><td>'.e($payment->transactionToken).'</td></tr>';
+    echo '<tr><td>transaction.channel_token</td><td>'.e($payment->channelToken).'</td></tr>';
     echo '<tr><td>transaction.channel_reference</td><td>'.e($payment->channelReference).'</td></tr>';
     echo '<tr><td>customer.channel_reference</td><td>'.e($payment->customerChannelReference).'</td></tr>';
 
     if ($payment->savedCard !== null) {
-        echo '<tr><td>saved_card.id</td><td>'.$payment->savedCard->id.'</td></tr>';
-        echo '<tr><td>saved_card</td><td>'.e($payment->savedCard->firstEightDigit.'****'.$payment->savedCard->lastFourDigit).'</td></tr>';
+        echo '<tr><td>saved_card.token</td><td>'.e($payment->savedCard->token).'</td></tr>';
+        echo '<tr><td>saved_card</td><td>'.e($payment->savedCard->firstDigits.'****'.$payment->savedCard->lastFourDigit).'</td></tr>';
     }
 
     foreach ($extra as $field => $extraValue) {
@@ -424,7 +424,7 @@ function paymentResult(Payment $payment, array $extra = []): void
 function giveBackForm(array $errors = []): void
 {
     $labels = [
-        'transaction_id' => 'İşlem numarası (transaction_id)',
+        'transaction_token' => "İşlem token'ı (transaction.token)",
         'amount' => 'Tutar (boş bırakılırsa kalanın tamamı)',
     ];
 
@@ -432,8 +432,8 @@ function giveBackForm(array $errors = []): void
     echo '<h2>İade / iptal</h2><div class="grid">';
 
     foreach ($labels as $field => $label) {
-        $error = $errors[$field][0] ?? null;
-        $required = $field === 'transaction_id' ? ' required' : '';
+        $error = $errors[$field === 'transaction_token' ? 'transaction.token' : $field][0] ?? null;
+        $required = $field === 'transaction_token' ? ' required' : '';
 
         echo '<div'.($error === null ? '' : ' class="invalid"').'>';
         echo '<label for="'.e($field).'">'.e($label).'</label>';
@@ -465,7 +465,7 @@ function giveBackResult(GiveBack $result): void
 
     echo '<table>';
     echo '<tr><td>result.successful</td><td>'.var_export($result->result->successful, true).'</td></tr>';
-    echo '<tr><td>transaction.id</td><td>'.$result->transactionId.'</td></tr>';
+    echo '<tr><td>transaction.token</td><td>'.e($result->transactionToken).'</td></tr>';
     echo '<tr><td>transaction.channel_reference</td><td>'.e($result->channelReference).'</td></tr>';
     echo '<tr><td>refund.type</td><td>'.e($result->type).'</td></tr>';
     echo '<tr><td>refund.amount</td><td>'.e($result->amount ?? '-').'</td></tr>';

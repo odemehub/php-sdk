@@ -40,16 +40,16 @@ if (isSubmitted() && $customerReference !== '') {
     $customer = new NamedCustomer($customerReference);
 
     try {
-        $savedCardId = (int) posted('saved_card_id');
+        $savedCardToken = posted('saved_card_token');
 
-        if (posted('action') === 'default' && $savedCardId > 0) {
-            $done = client()->defaultSavedCard(new DefaultSavedCard($customer, $savedCardId));
+        if (posted('action') === 'default' && $savedCardToken !== '') {
+            $done = client()->defaultSavedCard(new DefaultSavedCard($customer, $savedCardToken));
             $message = $done->result->message ?? 'Varsayılan kart güncellendi.';
             $successful = $done->result->successful;
         }
 
-        if (posted('action') === 'delete' && $savedCardId > 0) {
-            $done = client()->deleteSavedCard(new DeleteSavedCard($customer, $savedCardId));
+        if (posted('action') === 'delete' && $savedCardToken !== '') {
+            $done = client()->deleteSavedCard(new DeleteSavedCard($customer, $savedCardToken));
             $message = $done->result->message ?? 'Kart silindi.';
             $successful = $done->result->successful;
         }
@@ -91,16 +91,16 @@ if ($cards !== null) {
 
     foreach ($cards->savedCards as $card) {
         echo '<form method="post"><table>';
-        echo '<tr><td>id</td><td>'.$card->id.'</td></tr>';
-        echo '<tr><td>kart</td><td>'.e($card->firstEightDigit.'****'.$card->lastFourDigit).'</td></tr>';
+        echo '<tr><td>token</td><td>'.e($card->token).'</td></tr>';
+        echo '<tr><td>kart</td><td>'.e($card->firstDigits.'****'.$card->lastFourDigit).'</td></tr>';
         echo '<tr><td>şema</td><td>'.e($card->scheme ?? '-').'</td></tr>';
         echo '<tr><td>son kullanma</td><td>'.e($card->expiryMonth.'/'.$card->expiryYear).'</td></tr>';
-        echo '<tr><td>ödeme hesabı</td><td>'.e((string) ($card->paymentProviderId ?? '-')).'</td></tr>';
+        echo '<tr><td>ödeme hesabı</td><td>'.e((string) ($card->paymentProviderToken ?? '-')).'</td></tr>';
         echo '<tr><td>varsayılan</td><td>'.var_export($card->isDefault, true).'</td></tr>';
         echo '</table>';
 
         echo '<input type="hidden" name="customer_channel_reference" value="'.e($customerReference).'">';
-        echo '<input type="hidden" name="saved_card_id" value="'.$card->id.'">';
+        echo '<input type="hidden" name="saved_card_token" value="'.e($card->token).'">';
         echo '<div class="actions">';
 
         if (! $card->isDefault) {

@@ -23,10 +23,10 @@ abstract readonly class Message
     /**
      * The request body, in the snake_case the gateway speaks.
      *
-     * @param  int  $channelId  The client's channel, for the messages that speak for one.
+     * @param  string  $channelToken  The client's channel, by its token, for the messages that speak for one.
      * @return array<string, mixed>
      */
-    abstract public function toArray(int $channelId): array;
+    abstract public function toArray(string $channelToken): array;
 
     /**
      * Drop what the caller left unsaid, so an optional field is left out of

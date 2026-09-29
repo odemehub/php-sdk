@@ -10,17 +10,20 @@ namespace Gurmehub\Odemehub\Request;
  * address to send the customer to, and they give their card there. The
  * card is kept, because the periods to come are taken from it.
  *
- * What is subscribed to is one of the merchant's own recurring products,
- * named by its number in the gateway; the price and how often it comes
- * round are the product's, so nothing of the sort is sent here.
+ * What is subscribed to is one or more of the merchant's own recurring
+ * products, named by its own key for them. They have to come round at the
+ * same frequency and be priced in the same money, because a subscription
+ * is charged as one thing.
  */
-final readonly class Subscription extends ChannelMessage
+final readonly class SubscriptionPayment extends ChannelMessage
 {
+    /**
+     * @param  list<SubscriptionItem>  $items  What is subscribed to; at least one line, each product once.
+     */
     public function __construct(
-        /** The recurring product being subscribed to, by its number in the gateway. */
-        public int $productId,
         /** The key the subscription is known by in the calling system. */
         public string $channelReference,
+        public array $items,
         /** Where the customer is posted back to, with the signed outcome, once the first period is paid. */
         public string $successUrl,
         public Customer $customer,
@@ -28,9 +31,16 @@ final readonly class Subscription extends ChannelMessage
         public ?string $cancelUrl = null,
         /** Where this merchant is told, signed, whenever the subscription's state changes. */
         public ?string $webhookUrl = null,
-        ?int $channelId = null,
+        /**
+         * The payment account the subscription is paid through, by its
+         * token; the card is kept there and the renewals are taken there.
+         * Left out, the merchant's Gate rules pick the account, and its
+         * default account is used where none of them holds.
+         */
+        public ?string $paymentProviderToken = null,
+        ?string $channelToken = null,
     ) {
-        parent::__construct($channelId);
+        parent::__construct($channelToken);
     }
 
     public function path(): string
@@ -41,13 +51,17 @@ final readonly class Subscription extends ChannelMessage
     /**
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
         return [
             'subscription' => self::said([
-                'channel_id' => $this->channel($channelId),
+                'channel_token' => $this->channel($channelToken),
                 'channel_reference' => $this->channelReference,
-                'product_id' => $this->productId,
+                'payment_provider_token' => $this->paymentProviderToken,
+                'items' => array_map(
+                    static fn (SubscriptionItem $item): array => $item->toArray(),
+                    $this->items,
+                ),
                 'success_url' => $this->successUrl,
                 'cancel_url' => $this->cancelUrl,
                 'webhook_url' => $this->webhookUrl,

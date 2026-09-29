@@ -42,7 +42,7 @@ if (isSubmitted()) {
         $bin = client()->retrieveBin(new RetrieveBin(
             bin: $digits,
             amount: $amount,
-            paymentProviderId: ((int) posted('payment_provider_id')) ?: null,
+            paymentProviderToken: posted('payment_provider_token') === '' ? null : posted('payment_provider_token'),
         ));
 
         $message = $bin->result->message ?? 'Kart sorgulandı.';
@@ -83,12 +83,12 @@ if (isset($errors['transaction.amount'][0])) {
 
 echo '</div>';
 
-echo '<div'.(isset($errors['transaction.payment_provider_id']) ? ' class="invalid"' : '').'>';
-echo '<label for="payment_provider_id">Ödeme hesabı (boşsa varsayılan)</label>';
-echo '<input id="payment_provider_id" name="payment_provider_id" value="'.e(posted('payment_provider_id')).'">';
+echo '<div'.(isset($errors['transaction.payment_provider_token']) ? ' class="invalid"' : '').'>';
+echo '<label for="payment_provider_token">Ödeme hesabı (boşsa varsayılan)</label>';
+echo '<input id="payment_provider_token" name="payment_provider_token" value="'.e(posted('payment_provider_token')).'">';
 
-if (isset($errors['transaction.payment_provider_id'][0])) {
-    echo '<p class="error">'.e($errors['transaction.payment_provider_id'][0]).'</p>';
+if (isset($errors['transaction.payment_provider_token'][0])) {
+    echo '<p class="error">'.e($errors['transaction.payment_provider_token'][0]).'</p>';
 }
 
 echo '</div></div>';

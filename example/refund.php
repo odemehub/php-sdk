@@ -6,15 +6,15 @@ require_once __DIR__.'/page.php';
 
 use Gurmehub\Odemehub\Exception\OdemehubException;
 use Gurmehub\Odemehub\Exception\ValidationException;
-use Gurmehub\Odemehub\Request\Cancel;
-use Gurmehub\Odemehub\Request\Refund;
+use Gurmehub\Odemehub\Request\CancelPayment;
+use Gurmehub\Odemehub\Request\RefundPayment;
 
 /*
 |--------------------------------------------------------------------------
 | İade ve iptal
 |--------------------------------------------------------------------------
 |
-| Ödemenin geçitteki numarası (transaction_id) yeterlidir: hangi hesaptan
+| Ödemenin geçitteki token'ı (transaction.token) yeterlidir: hangi hesaptan
 | çekildiğini, hangi sağlayıcıya gittiğini ve sağlayıcının ödemeye verdiği
 | referansı geçit zaten biliyor.
 |
@@ -32,13 +32,13 @@ $message = null;
 $errors = [];
 
 if (isSubmitted()) {
-    $transactionId = (int) posted('transaction_id');
+    $transactionToken = posted('transaction_token');
     $amount = posted('amount');
 
     try {
         $result = posted('type') === 'cancel'
-            ? client()->cancel(new Cancel($transactionId))
-            : client()->refund(new Refund($transactionId, $amount === '' ? null : $amount));
+            ? client()->cancelPayment(new CancelPayment($transactionToken))
+            : client()->refundPayment(new RefundPayment($transactionToken, $amount === '' ? null : $amount));
     } catch (ValidationException $exception) {
         $message = $exception->getMessage();
         $errors = $exception->errors;

@@ -15,15 +15,16 @@ final readonly class SecurePayment extends Payment
 {
     public function __construct(
         Result $result,
-        int $transactionId,
-        int $channelId,
+        string $transactionToken,
+        string $channelToken,
         string $channelReference,
         string $customerChannelReference,
         /** Where the customer has to be sent. Always there when the payment started. */
         public ?string $redirectUrl = null,
         ?SavedCard $savedCard = null,
+        ?Conversion $conversion = null,
     ) {
-        parent::__construct($result, $transactionId, $channelId, $channelReference, $customerChannelReference, $savedCard);
+        parent::__construct($result, $transactionToken, $channelToken, $channelReference, $customerChannelReference, $savedCard, $conversion);
     }
 
     /**

@@ -61,9 +61,9 @@ final class Client
      * here; the customer is sent to the address that comes back and pays
      * there, and the outcome is posted back the way any payment's is.
      */
-    public function checkout(Request\Checkout $checkout): Response\Checkout
+    public function orderPayment(Request\OrderPayment $orderPayment): Response\OrderPayment
     {
-        return Response\Checkout::fromArray($this->send($checkout));
+        return Response\OrderPayment::fromArray($this->send($orderPayment));
     }
 
     /**
@@ -72,16 +72,66 @@ final class Client
      * address that comes back and pays there, and the periods after that
      * are taken from the card they pay with.
      */
-    public function subscriptionPayment(Request\Subscription $subscription): Response\Subscription
+    public function subscriptionPayment(Request\SubscriptionPayment $subscription): Response\Subscription
     {
         return Response\Subscription::fromArray($this->send($subscription));
+    }
+
+    /**
+     * Give money back out of a payment the provider has settled, whole or
+     * in part. A refund that names no amount gives back everything the
+     * payment has left in it.
+     */
+    public function refundPayment(Request\RefundPayment $refund): Response\GiveBack
+    {
+        return Response\GiveBack::fromArray($this->send($refund));
+    }
+
+    /**
+     * Take back the whole of a payment the provider has not settled yet.
+     * Anything less than the whole of it goes back as a refund instead.
+     */
+    public function cancelPayment(Request\CancelPayment $cancel): Response\GiveBack
+    {
+        return Response\GiveBack::fromArray($this->send($cancel));
+    }
+
+    /**
+     * How a payment went. A customer sent to their bank comes back to the
+     * merchant with the payment's token and a hint at how it went; the
+     * hint is worth nothing on its own, and this is the call that says
+     * what really became of it.
+     */
+    public function retrievePayment(Request\RetrievePayment $payment): Response\Payment
+    {
+        return Response\Payment::fromArray($this->send($payment));
+    }
+
+    /**
+     * Ask what the gateway's provider knows about a card from the head of
+     * its number, and how the amount may be paid off on it. Nothing is
+     * charged and nothing is written down.
+     */
+    public function retrieveBin(Request\RetrieveBin $retrieveBin): Response\Bin
+    {
+        return Response\Bin::fromArray($this->send($retrieveBin));
+    }
+
+    /**
+     * Save a product in the merchant's catalogue at the gateway, or change
+     * the one already saved under the same key on the same channel. Order
+     * lines and subscriptions name products by that key.
+     */
+    public function saveProduct(Request\SaveProduct $product): Response\Product
+    {
+        return Response\Product::fromArray($this->send($product));
     }
 
     /**
      * Where a subscription stands: what it is for, the period it is on and
      * whether that period has been paid for.
      */
-    public function subscription(Request\RetrieveSubscription $subscription): Response\Subscription
+    public function retrieveSubscription(Request\RetrieveSubscription $subscription): Response\Subscription
     {
         return Response\Subscription::fromArray($this->send($subscription));
     }
@@ -94,46 +144,6 @@ final class Client
     public function cancelSubscription(Request\CancelSubscription $subscription): Response\Subscription
     {
         return Response\Subscription::fromArray($this->send($subscription));
-    }
-
-    /**
-     * How a payment went. A customer sent to their bank comes back to the
-     * merchant with the payment's number and a hint at how it went; the
-     * hint is worth nothing on its own, and this is the call that says
-     * what really became of it.
-     */
-    public function payment(Request\RetrievePayment $payment): Response\Payment
-    {
-        return Response\Payment::fromArray($this->send($payment));
-    }
-
-    /**
-     * Give money back out of a payment the provider has settled, whole or
-     * in part. A refund that names no amount gives back everything the
-     * payment has left in it.
-     */
-    public function refund(Request\Refund $refund): Response\GiveBack
-    {
-        return Response\GiveBack::fromArray($this->send($refund));
-    }
-
-    /**
-     * Take back the whole of a payment the provider has not settled yet.
-     * Anything less than the whole of it goes back as a refund instead.
-     */
-    public function cancel(Request\Cancel $cancel): Response\GiveBack
-    {
-        return Response\GiveBack::fromArray($this->send($cancel));
-    }
-
-    /**
-     * Ask what the gateway's provider knows about a card from the head of
-     * its number, and how the amount may be paid off on it. Nothing is
-     * charged and nothing is written down.
-     */
-    public function retrieveBin(Request\RetrieveBin $retrieveBin): Response\Bin
-    {
-        return Response\Bin::fromArray($this->send($retrieveBin));
     }
 
     /**
@@ -153,20 +163,20 @@ final class Client
     }
 
     /**
-     * Let go of one of a customer's kept cards, at the provider and here.
-     */
-    public function deleteSavedCard(Request\DeleteSavedCard $deleteSavedCard): Response\KeptCard
-    {
-        return Response\KeptCard::fromArray($this->send($deleteSavedCard));
-    }
-
-    /**
      * Make one of a customer's kept cards the one they pay with unless they
      * say otherwise.
      */
     public function defaultSavedCard(Request\DefaultSavedCard $defaultSavedCard): Response\KeptCard
     {
         return Response\KeptCard::fromArray($this->send($defaultSavedCard));
+    }
+
+    /**
+     * Let go of one of a customer's kept cards, at the provider and here.
+     */
+    public function deleteSavedCard(Request\DeleteSavedCard $deleteSavedCard): Response\KeptCard
+    {
+        return Response\KeptCard::fromArray($this->send($deleteSavedCard));
     }
 
     /**
@@ -203,7 +213,7 @@ final class Client
     private function send(Request\Message $message): array
     {
         try {
-            $body = json_encode($message->toArray($this->options->channelId), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            $body = json_encode($message->toArray($this->options->channelToken), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         } catch (JsonException $exception) {
             throw new UnexpectedResponseException('İstek gövdesi JSON olarak yazılamadı: '.$exception->getMessage(), 0, $exception);
         }

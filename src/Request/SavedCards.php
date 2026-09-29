@@ -12,9 +12,9 @@ final readonly class SavedCards extends ChannelMessage
 {
     public function __construct(
         public NamedCustomer $customer,
-        ?int $channelId = null,
+        ?string $channelToken = null,
     ) {
-        parent::__construct($channelId);
+        parent::__construct($channelToken);
     }
 
     public function path(): string
@@ -25,8 +25,8 @@ final readonly class SavedCards extends ChannelMessage
     /**
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
-        return ['customer' => $this->customer->toArray($this->channel($channelId))];
+        return ['customer' => $this->customer->toArray($this->channel($channelToken))];
     }
 }

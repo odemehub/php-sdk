@@ -9,57 +9,59 @@ namespace Gurmehub\Odemehub\Request;
  * here: the answer carries the address to send the customer to, and they
  * give their card there. The customer is given whole, because that page
  * asks them for nothing but the card.
+ *
+ * What the order comes to is not sent. The gateway adds up the lines and
+ * answers with the amount, so the total can never disagree with what it
+ * is made up of.
  */
-final readonly class Checkout extends ChannelMessage
+final readonly class OrderPayment extends ChannelMessage
 {
     /**
-     * @param  list<OrderItem>  $items  What the order is made up of, to be shown to the customer.
+     * @param  list<OrderItem>  $items  What the order is made up of; at least one line.
      */
     public function __construct(
         /** The number the order is known by in the calling system. */
         public string $channelReference,
-        /** What the customer pays, as digits with the kurus behind a point. */
-        public string $amount,
         /** Where the customer is posted back to, with the signed outcome, once the order is paid. */
         public string $successUrl,
         public Customer $customer,
+        public array $items,
         /** Where the customer goes if they turn back without paying. */
         public ?string $cancelUrl = null,
         public ?string $description = null,
-        /** What is owed before tax. */
-        public ?string $subtotal = null,
-        /** The tax on the order. */
-        public ?string $taxAmount = null,
         /** Three letters, e.g. TRY. Left out, the gateway takes the lira. */
         public ?string $currency = null,
-        public array $items = [],
-        ?int $channelId = null,
+        /**
+         * The payment account the order is paid through, by its token.
+         * Left out, the merchant's Gate rules pick the account, and its
+         * default account is used where none of them holds.
+         */
+        public ?string $paymentProviderToken = null,
+        ?string $channelToken = null,
     ) {
-        parent::__construct($channelId);
+        parent::__construct($channelToken);
     }
 
     public function path(): string
     {
-        return 'checkout-payment';
+        return 'order-payment';
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
         return [
             'order' => self::said([
-                'channel_id' => $this->channel($channelId),
+                'channel_token' => $this->channel($channelToken),
                 'channel_reference' => $this->channelReference,
+                'payment_provider_token' => $this->paymentProviderToken,
                 'description' => $this->description,
-                'amount' => $this->amount,
-                'subtotal' => $this->subtotal,
-                'tax_amount' => $this->taxAmount,
                 'currency' => $this->currency,
                 'success_url' => $this->successUrl,
                 'cancel_url' => $this->cancelUrl,
-                'items' => $this->items === [] ? null : array_map(
+                'items' => array_map(
                     static fn (OrderItem $item): array => $item->toArray(),
                     $this->items,
                 ),

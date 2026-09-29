@@ -8,10 +8,10 @@ namespace Gurmehub\Odemehub\Request;
  * Money given back out of a payment the provider has already settled, whole
  * or in part.
  */
-final readonly class Refund extends GiveBack
+final readonly class RefundPayment extends GiveBack
 {
     public function __construct(
-        int $transactionId,
+        string $transactionToken,
         /**
          * How much goes back, as digits with the kurus behind a point:
          * '35.50'. Leave it out and everything the payment has left in it
@@ -21,7 +21,7 @@ final readonly class Refund extends GiveBack
          */
         public ?string $amount = null,
     ) {
-        parent::__construct($transactionId);
+        parent::__construct($transactionToken);
     }
 
     public function path(): string
@@ -35,10 +35,10 @@ final readonly class Refund extends GiveBack
      *
      * @return array<string, mixed>
      */
-    public function toArray(int $channelId): array
+    public function toArray(string $channelToken): array
     {
         return self::said([
-            ...parent::toArray($channelId),
+            ...parent::toArray($channelToken),
             'amount' => $this->amount,
         ]);
     }
