@@ -9,7 +9,7 @@
 PHP 8.2 ve üzeri gerekir.
 
 ```bash
-composer require gurmehub/odemehub
+composer require odemehub/php-sdk
 ```
 
 ## Yapılandırma

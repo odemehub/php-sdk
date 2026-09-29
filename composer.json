@@ -1,5 +1,5 @@
 {
-    "name": "gurmehub/odemehub",
+    "name": "odemehub/php-sdk",
     "description": "ödemehub ödeme geçidi için PHP istemcisi.",
     "type": "library",
     "license": "proprietary",
