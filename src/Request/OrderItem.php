@@ -22,6 +22,8 @@ final readonly class OrderItem
         public string $channelReference,
         /** Left out, the product's own name is shown. */
         public ?string $name = null,
+        /** The https address of the picture shown beside the line at checkout. Left out, the product's own picture is shown. */
+        public ?string $image = null,
         /** Left out, the line is for one. */
         public ?int $quantity = null,
         /** The price of one, as digits with the kurus behind a point. Left out, the product's own price is charged. */
@@ -38,6 +40,7 @@ final readonly class OrderItem
         return array_filter([
             'channel_reference' => $this->channelReference,
             'name' => $this->name,
+            'image' => $this->image,
             'quantity' => $this->quantity,
             'unit_amount' => $this->unitAmount,
             'tax_rate' => $this->taxRate,

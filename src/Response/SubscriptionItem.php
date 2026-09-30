@@ -15,6 +15,8 @@ final readonly class SubscriptionItem
         /** The merchant's own key for the product. */
         public string $channelReference,
         public string $name,
+        /** The picture shown for the line: the one named when the subscription was opened, or else the product's. */
+        public ?string $image,
         public int $quantity,
         /** The price of one, as digits with the kurus behind a point. */
         public string $unitAmount,
@@ -30,6 +32,7 @@ final readonly class SubscriptionItem
         return new self(
             channelReference: (string) ($item['channel_reference'] ?? ''),
             name: (string) ($item['name'] ?? ''),
+            image: isset($item['image']) ? (string) $item['image'] : null,
             quantity: (int) ($item['quantity'] ?? 0),
             unitAmount: (string) ($item['unit_amount'] ?? ''),
             taxRate: isset($item['tax_rate']) ? (string) $item['tax_rate'] : null,

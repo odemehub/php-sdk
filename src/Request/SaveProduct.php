@@ -33,6 +33,12 @@ final readonly class SaveProduct extends ChannelMessage
         public ?string $currency = null,
         /** Whether it is on sale. Left out, it is. */
         public ?bool $isActive = null,
+        /**
+         * The https address of the picture the checkout shows it with. Left
+         * out, the product keeps the picture it has; an empty string takes
+         * it off.
+         */
+        public ?string $image = null,
         ?string $channelToken = null,
     ) {
         parent::__construct($channelToken);
@@ -53,6 +59,7 @@ final readonly class SaveProduct extends ChannelMessage
                 'channel_token' => $this->channel($channelToken),
                 'channel_reference' => $this->channelReference,
                 'name' => $this->name,
+                'image' => $this->image,
                 'type' => $this->type,
                 'amount' => $this->amount,
                 'currency' => $this->currency,

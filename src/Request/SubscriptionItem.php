@@ -23,6 +23,8 @@ final readonly class SubscriptionItem
          * charged at that price too.
          */
         public ?string $unitAmount = null,
+        /** The https address of the picture shown at checkout for this line. Left out, the product's own picture is shown. */
+        public ?string $image = null,
     ) {}
 
     /**
@@ -34,6 +36,7 @@ final readonly class SubscriptionItem
             'channel_reference' => $this->channelReference,
             'quantity' => $this->quantity,
             'unit_amount' => $this->unitAmount,
+            'image' => $this->image,
         ], static fn (mixed $value): bool => $value !== null);
     }
 }

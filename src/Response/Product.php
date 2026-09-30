@@ -17,6 +17,8 @@ final readonly class Product
         /** The key the product is known by in the calling system. */
         public string $channelReference,
         public string $name,
+        /** The address of the picture the checkout shows it with, if it has one. */
+        public ?string $image,
         /** simple or recurring. */
         public string $type,
         /** The price of one, as digits with the kurus behind a point. */
@@ -42,6 +44,7 @@ final readonly class Product
             channelToken: (string) ($product['channel_token'] ?? ''),
             channelReference: (string) ($product['channel_reference'] ?? ''),
             name: (string) ($product['name'] ?? ''),
+            image: isset($product['image']) ? (string) $product['image'] : null,
             type: (string) ($product['type'] ?? ''),
             amount: (string) ($product['amount'] ?? ''),
             currency: (string) ($product['currency'] ?? ''),
