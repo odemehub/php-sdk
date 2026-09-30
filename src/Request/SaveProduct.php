@@ -27,7 +27,7 @@ final readonly class SaveProduct extends ChannelMessage
         public string $amount,
         /** The tax included in the price, as a percentage, e.g. '20'. */
         public string $taxRate,
-        /** How often a recurring product comes round: monthly or yearly. Only a recurring product has one. */
+        /** How often a recurring product comes round: monthly or annually. Only a recurring product has one. */
         public ?string $period = null,
         /** Three letters, e.g. TRY. Left out, the gateway takes the lira. */
         public ?string $currency = null,

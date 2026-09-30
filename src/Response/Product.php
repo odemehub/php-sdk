@@ -24,7 +24,7 @@ final readonly class Product
         public string $currency,
         /** The tax included in the price, as a percentage. */
         public string $taxRate,
-        /** monthly or yearly for a recurring product; nothing for a simple one. */
+        /** monthly or annually for a recurring product; nothing for a simple one. */
         public ?string $period,
         /** Whether it is on sale. */
         public bool $isActive,

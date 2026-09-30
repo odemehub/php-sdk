@@ -30,7 +30,7 @@ final readonly class Subscription
         public array $items,
         /** Where it stands: pending, active, past_due or cancelled. */
         public string $status,
-        /** How often a period comes round: monthly or yearly. */
+        /** How often a period comes round: monthly or annually. */
         public string $period,
         /** What the period it is on costs, with the kurus behind a point. */
         public string $amount,
