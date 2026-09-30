@@ -20,7 +20,7 @@ final readonly class GiveBack extends Payment
         string $transactionToken,
         string $channelToken,
         string $channelReference,
-        string $customerChannelReference,
+        ?string $customerChannelReference,
         /** Which of the two it was: a cancellation or a refund. */
         public string $type = '',
         /** How much actually went back, whether or not it was asked for by name. */

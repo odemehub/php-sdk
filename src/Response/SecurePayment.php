@@ -18,7 +18,7 @@ final readonly class SecurePayment extends Payment
         string $transactionToken,
         string $channelToken,
         string $channelReference,
-        string $customerChannelReference,
+        ?string $customerChannelReference,
         /** Where the customer has to be sent. Always there when the payment started. */
         public ?string $redirectUrl = null,
         ?SavedCard $savedCard = null,

@@ -7,8 +7,11 @@ namespace Gurmehub\Odemehub\Request;
 /**
  * An order opened to be paid on the gateway's own page. Nothing is charged
  * here: the answer carries the address to send the customer to, and they
- * give their card there. The customer is given whole, because that page
- * asks them for nothing but the card.
+ * give their card there. The customer is given whole or not at all: given,
+ * that page asks them for nothing but the card; left out, the order is
+ * opened for nobody in particular and whoever pays says who they are on
+ * the page. Such a payer is never handed back — a merchant that wants to
+ * know its customer keeps them on its own side and sends them.
  *
  * What the order comes to is not sent. The gateway adds up the lines and
  * answers with the amount, so the total can never disagree with what it
@@ -24,8 +27,9 @@ final readonly class OrderPayment extends ChannelMessage
         public string $channelReference,
         /** Where the customer is posted back to, with the signed outcome, once the order is paid. */
         public string $successUrl,
-        public Customer $customer,
         public array $items,
+        /** Who the order is for; left out, the payer says on the page. */
+        public ?Customer $customer = null,
         /** Where the customer goes if they turn back without paying. */
         public ?string $cancelUrl = null,
         public ?string $description = null,
@@ -52,7 +56,7 @@ final readonly class OrderPayment extends ChannelMessage
      */
     public function toArray(string $channelToken): array
     {
-        return [
+        return self::said([
             'order' => self::said([
                 'channel_token' => $this->channel($channelToken),
                 'channel_reference' => $this->channelReference,
@@ -66,7 +70,7 @@ final readonly class OrderPayment extends ChannelMessage
                     $this->items,
                 ),
             ]),
-            'customer' => $this->customer->toArray(),
-        ];
+            'customer' => $this->customer?->toArray(),
+        ]);
     }
 }

@@ -8,7 +8,9 @@ namespace Gurmehub\Odemehub\Request;
  * A subscription opened for a customer, to be paid for the first time on
  * the gateway's own page. Nothing is charged here: the answer carries the
  * address to send the customer to, and they give their card there. The
- * card is kept, because the periods to come are taken from it.
+ * card is kept, because the periods to come are taken from it. The
+ * customer is given whole or not at all: left out, whoever pays says who
+ * they are on the page, and is never handed back.
  *
  * What is subscribed to is one or more of the merchant's own recurring
  * products, named by its own key for them. They have to come round at the
@@ -26,7 +28,8 @@ final readonly class SubscriptionPayment extends ChannelMessage
         public array $items,
         /** Where the customer is posted back to, with the signed outcome, once the first period is paid. */
         public string $successUrl,
-        public Customer $customer,
+        /** Who is subscribing; left out, the payer says on the page. */
+        public ?Customer $customer = null,
         /** Where the customer goes if they turn back without paying. */
         public ?string $cancelUrl = null,
         /** Where this merchant is told, signed, whenever the subscription's state changes. */
@@ -53,7 +56,7 @@ final readonly class SubscriptionPayment extends ChannelMessage
      */
     public function toArray(string $channelToken): array
     {
-        return [
+        return self::said([
             'subscription' => self::said([
                 'channel_token' => $this->channel($channelToken),
                 'channel_reference' => $this->channelReference,
@@ -66,7 +69,7 @@ final readonly class SubscriptionPayment extends ChannelMessage
                 'cancel_url' => $this->cancelUrl,
                 'webhook_url' => $this->webhookUrl,
             ]),
-            'customer' => $this->customer->toArray(),
-        ];
+            'customer' => $this->customer?->toArray(),
+        ]);
     }
 }

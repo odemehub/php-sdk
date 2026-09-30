@@ -27,8 +27,8 @@ final readonly class OrderPayment
         public string $status,
         /** Where the customer has to be sent to pay. */
         public string $checkoutUrl,
-        /** The merchant's own key for the customer the order is for. */
-        public string $customerChannelReference,
+        /** The merchant's own key for the customer the order is for; null for an order opened without one. */
+        public ?string $customerChannelReference,
     ) {}
 
     /**
@@ -37,7 +37,7 @@ final readonly class OrderPayment
     public static function fromArray(array $body): self
     {
         $order = is_array($body['order'] ?? null) ? $body['order'] : [];
-        $customer = is_array($body['customer'] ?? null) ? $body['customer'] : [];
+        $customer = is_array($body['customer'] ?? null) ? $body['customer'] : null;
 
         return new self(
             result: Result::fromArray($body),
@@ -48,7 +48,7 @@ final readonly class OrderPayment
             currency: (string) ($order['currency'] ?? ''),
             status: (string) ($order['status'] ?? ''),
             checkoutUrl: (string) ($order['checkout_url'] ?? ''),
-            customerChannelReference: (string) ($customer['channel_reference'] ?? ''),
+            customerChannelReference: $customer === null ? null : (string) ($customer['channel_reference'] ?? ''),
         );
     }
 }

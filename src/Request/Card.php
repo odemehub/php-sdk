@@ -46,7 +46,8 @@ final readonly class Card
 
     /**
      * Keep the number and the security code out of dumps, stack traces and
-     * anything else that reads an object's properties for display.
+     * anything else that reads an object's properties for display. No digit
+     * of either shows, not even the last four.
      *
      * @return array<string, mixed>
      */
@@ -54,8 +55,8 @@ final readonly class Card
     {
         return [
             'holderName' => $this->holderName,
-            'number' => str_repeat('*', max(strlen($this->number) - 4, 0)).substr($this->number, -4),
-            'securityCode' => str_repeat('*', max(strlen($this->securityCode) - 1, 0)).substr($this->securityCode, -1),
+            'number' => '*****',
+            'securityCode' => '*****',
             'expiryMonth' => $this->expiryMonth,
             'expiryYear' => $this->expiryYear,
             'shouldSave' => $this->shouldSave,

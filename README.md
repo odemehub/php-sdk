@@ -175,6 +175,10 @@ Sipariş tutarını göndermezsiniz; geçit kalemleri toplar ve `$order->amount`
 
 Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `retrievePayment()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
 
+### Misafir sipariş
+
+Müşteriyi tanımıyorsanız `customer` göndermeyin; ödeme sayfası müşteriden ad, adres ve iletişim bilgilerini kendisi ister. Böyle bir siparişte `$order->customerChannelReference`, `retrievePayment()` yanıtı ve `successUrl` adresinize gelen bildirim `customer` için `null` döner: misafir olarak açtığınız sipariş sizin için hep misafirdir. Müşteriyi sonraki alışverişlerinde tanımak istiyorsanız onu kendi tarafınızda kaydedip siparişi `customer` ile açın.
+
 ## Abonelikler
 
 Müşteriden dönem dönem tahsilat yapmak için abonelik açarsınız. Neye abone olunduğu bir ya da birkaç **abonelik ürünüdür** (`type: 'recurring'`), sizdeki referanslarıyla adlandırılır; fiyatı, para birimini ve dönemini ürün taşır. Aynı aboneliğe konan ürünlerin dönemi ve para birimi aynı olmalıdır.

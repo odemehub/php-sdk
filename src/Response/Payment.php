@@ -24,8 +24,8 @@ readonly class Payment
         public string $channelToken,
         /** The reference the payment is known by in the calling system. */
         public string $channelReference,
-        /** The merchant's own key for the customer the payment was made for. */
-        public string $customerChannelReference,
+        /** The merchant's own key for the customer the payment was made for; null for a payer the merchant never named. */
+        public ?string $customerChannelReference,
         /**
          * The card the payment kept, for a payment that asked for one to be
          * kept. It is null while nothing was kept: because the payment did
@@ -60,7 +60,7 @@ readonly class Payment
     protected static function parts(array $body): array
     {
         $transaction = is_array($body['transaction'] ?? null) ? $body['transaction'] : [];
-        $customer = is_array($body['customer'] ?? null) ? $body['customer'] : [];
+        $customer = is_array($body['customer'] ?? null) ? $body['customer'] : null;
         $savedCard = $body['saved_card'] ?? null;
         $conversion = $body['conversion'] ?? null;
 
@@ -69,7 +69,7 @@ readonly class Payment
             'transactionToken' => (string) ($transaction['token'] ?? ''),
             'channelToken' => (string) ($transaction['channel_token'] ?? ''),
             'channelReference' => (string) ($transaction['channel_reference'] ?? ''),
-            'customerChannelReference' => (string) ($customer['channel_reference'] ?? ''),
+            'customerChannelReference' => $customer === null ? null : (string) ($customer['channel_reference'] ?? ''),
             'savedCard' => is_array($savedCard) ? SavedCard::fromArray($savedCard) : null,
             'conversion' => is_array($conversion) ? Conversion::fromArray($conversion) : null,
         ];
