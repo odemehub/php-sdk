@@ -21,7 +21,7 @@ use Gurmehub\Odemehub\Client;
 use Gurmehub\Odemehub\Options;
 
 $client = new Client(new Options(
-    baseUrl: 'https://odeme.gurmehub.com',
+    baseUrl: 'https://app.odemehub.com',
     team: '4829301756',              // Çalışma Alanı Kimliğiniz
     channelToken: '6f1c2e7a-4b3d-4c8e-9a61-2f5d7b0c3e14', // müşterinin size ulaştığı kanal
     apiKey: getenv('ODEMEHUB_API_KEY'),
@@ -461,7 +461,7 @@ Ağ hatasında ödemeyi körlemesine tekrarlamayın: `TransportException` "olmad
 
 ```bash
 cd example
-ODEMEHUB_BASE_URL=https://odeme.gurmehub.com ODEMEHUB_TEAM=4829301756 ODEMEHUB_CHANNEL_TOKEN=6f1c2e7a-4b3d-4c8e-9a61-2f5d7b0c3e14 ODEMEHUB_API_KEY=... ODEMEHUB_API_SECRET=... php -S localhost:8080
+ODEMEHUB_BASE_URL=https://app.odemehub.com ODEMEHUB_TEAM=4829301756 ODEMEHUB_CHANNEL_TOKEN=6f1c2e7a-4b3d-4c8e-9a61-2f5d7b0c3e14 ODEMEHUB_API_KEY=... ODEMEHUB_API_SECRET=... php -S localhost:8080
 ```
 
 Sonra `http://localhost:8080/index.php` adresini açın. 3D denemesi yapacaksanız bankanın döneceği adresi de verin: `ODEMEHUB_CALLBACK_URL=http://localhost:8080/return.php`.

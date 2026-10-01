@@ -18,7 +18,7 @@ final readonly class Options
     public const API_KEY_HEADER = 'X-Api-Key';
 
     public function __construct(
-        /** The address the application is served from, e.g. https://odeme.gurmehub.com. */
+        /** The address the application is served from, e.g. https://app.odemehub.com. */
         public string $baseUrl,
         /** The team the payments are made on behalf of, as the Entegrasyon page names it. */
         public string $team,
