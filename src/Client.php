@@ -59,11 +59,13 @@ final class Client
     /**
      * Open an order to be paid on the gateway's own page. Nothing is charged
      * here; the customer is sent to the address that comes back and pays
-     * there, and the outcome is posted back the way any payment's is.
+     * there, and the outcome is posted back the way any payment's is — and
+     * to the order's webhook address, if one was given, for the customer
+     * who never comes back.
      */
-    public function orderPayment(Request\OrderPayment $orderPayment): Response\OrderPayment
+    public function orderPayment(Request\OrderPayment $orderPayment): Response\Order
     {
-        return Response\OrderPayment::fromArray($this->send($orderPayment));
+        return Response\Order::fromArray($this->send($orderPayment));
     }
 
     /**
@@ -108,6 +110,17 @@ final class Client
     }
 
     /**
+     * Every attempt made under one of the merchant's own numbers on a
+     * channel, oldest first: how many times the customer tried, which were
+     * refused and which went through. For an order whose customer never
+     * came back, this is the whole story; `retrievePayment` is one chapter.
+     */
+    public function retrieveTransactions(Request\RetrieveTransactions $transactions): Response\Transactions
+    {
+        return Response\Transactions::fromArray($this->send($transactions));
+    }
+
+    /**
      * Ask what the gateway's provider knows about a card from the head of
      * its number, and how the amount may be paid off on it. Nothing is
      * charged and nothing is written down.
@@ -125,6 +138,16 @@ final class Client
     public function saveProduct(Request\SaveProduct $product): Response\Product
     {
         return Response\Product::fromArray($this->send($product));
+    }
+
+    /**
+     * Where an order stands: what it is for, whether it has been paid and,
+     * if so, by which payment. The one call a merchant holding nothing but
+     * the order's token can make.
+     */
+    public function retrieveOrder(Request\RetrieveOrder $order): Response\Order
+    {
+        return Response\Order::fromArray($this->send($order));
     }
 
     /**
@@ -186,8 +209,10 @@ final class Client
      * character for character, together with the header; nothing in it is
      * believed until the signature is checked against the secret.
      *
-     * Later kinds of word — one about a payment, say — will be read by
-     * their own method, so this one says which it is about.
+     * Each kind of word is read by its own method, so the caller says which
+     * it is about: the address it set up for subscriptions is read here,
+     * the one for orders by `orderWebhook`, the one for payments by
+     * `transactionWebhook`.
      *
      * @param  string  $payload  The request body, read raw: file_get_contents('php://input').
      * @param  string|null  $signature  The `X-Signature` header, as it arrived.
@@ -196,11 +221,55 @@ final class Client
      */
     public function subscriptionWebhook(string $payload, ?string $signature): Response\SubscriptionWebhook
     {
+        return Response\SubscriptionWebhook::fromArray($this->webhook($payload, $signature));
+    }
+
+    /**
+     * Read a word the gateway sent about an order: that it was paid, with
+     * the payment that paid it. It is posted to the address the order was
+     * opened with and read the way a subscription's word is.
+     *
+     * @param  string  $payload  The request body, read raw: file_get_contents('php://input').
+     * @param  string|null  $signature  The `X-Signature` header, as it arrived.
+     *
+     * @throws SignatureException
+     */
+    public function orderWebhook(string $payload, ?string $signature): Response\OrderWebhook
+    {
+        return Response\OrderWebhook::fromArray($this->webhook($payload, $signature));
+    }
+
+    /**
+     * Read a word the gateway sent about a payment the customer finished at
+     * their bank: the same answer `retrievePayment` gives, with the state
+     * reached on top. It is posted to the address the payment was started
+     * with and read the way a subscription's word is.
+     *
+     * @param  string  $payload  The request body, read raw: file_get_contents('php://input').
+     * @param  string|null  $signature  The `X-Signature` header, as it arrived.
+     *
+     * @throws SignatureException
+     */
+    public function transactionWebhook(string $payload, ?string $signature): Response\TransactionWebhook
+    {
+        return Response\TransactionWebhook::fromArray($this->webhook($payload, $signature));
+    }
+
+    /**
+     * Check a word's signature and open it. Nothing in it is believed until
+     * the signature is checked against the secret.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws SignatureException
+     */
+    private function webhook(string $payload, ?string $signature): array
+    {
         if (! $this->signature->verify($payload, $signature)) {
             throw new SignatureException('Bildirimin imzası doğrulanamadı; bildirim ödeme geçidinden gelmemiş olabilir.');
         }
 
-        return Response\SubscriptionWebhook::fromArray($this->decode($payload, 0));
+        return $this->decode($payload, 0);
     }
 
     /**

@@ -32,6 +32,13 @@ final readonly class OrderPayment extends ChannelMessage
         public ?Customer $customer = null,
         /** Where the customer goes if they turn back without paying. */
         public ?string $cancelUrl = null,
+        /**
+         * Where the merchant's own server is told the order was paid, signed
+         * the way every answer is. The customer's browser carries the word
+         * to `successUrl` only if the customer stays for it; this address
+         * hears either way.
+         */
+        public ?string $webhookUrl = null,
         public ?string $description = null,
         /** Three letters, e.g. TRY. Left out, the gateway takes the lira. */
         public ?string $currency = null,
@@ -65,6 +72,7 @@ final readonly class OrderPayment extends ChannelMessage
                 'currency' => $this->currency,
                 'success_url' => $this->successUrl,
                 'cancel_url' => $this->cancelUrl,
+                'webhook_url' => $this->webhookUrl,
                 'items' => array_map(
                     static fn (OrderItem $item): array => $item->toArray(),
                     $this->items,
