@@ -11,6 +11,8 @@ namespace Gurmehub\Odemehub\Response;
  */
 final readonly class Installment
 {
+    use ReadsFields;
+
     public function __construct(
         public int $number,
         /** What is charged each month, as digits with the kurus behind a point. */
@@ -26,8 +28,8 @@ final readonly class Installment
     {
         return new self(
             number: (int) ($installment['number'] ?? 0),
-            amount: (string) ($installment['amount'] ?? ''),
-            total: (string) ($installment['total'] ?? ''),
+            amount: self::text($installment['amount'] ?? null),
+            total: self::text($installment['total'] ?? null),
         );
     }
 }

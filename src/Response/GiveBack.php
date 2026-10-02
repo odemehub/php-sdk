@@ -6,43 +6,39 @@ namespace Gurmehub\Odemehub\Response;
 
 /**
  * What became of money asked back out of a payment. An attempt the provider
- * turned down is an outcome like any other and arrives here; only answers
- * that were never an outcome at all are raised as exceptions.
+ * turned down is an outcome like any other and arrives here with
+ * `result.successful` false; only answers that were never an outcome at
+ * all are raised as exceptions.
  *
  * A cancellation and a refund answer the same way, so both come back as
- * this. What actually went back is answered along with the rest, because a
- * refund may have been asked for without naming an amount.
+ * this: the payment outcome and, under `refund`, which of the two it was
+ * and how much went back.
  */
 final readonly class GiveBack extends Payment
 {
     public function __construct(
         Result $result,
-        string $transactionToken,
-        string $channelToken,
-        string $channelReference,
-        ?string $customerChannelReference,
-        /** Which of the two it was: a cancellation or a refund. */
-        public string $type = '',
-        /** How much actually went back, whether or not it was asked for by name. */
-        public ?string $amount = null,
-        ?SavedCard $savedCard = null,
+        PaymentTransaction $transaction,
+        ?PaymentCustomer $customer,
+        /** What went back; null when the gateway answered without it. */
+        public ?Refund $refund = null,
         ?Conversion $conversion = null,
+        ?SavedCard $savedCard = null,
     ) {
-        parent::__construct($result, $transactionToken, $channelToken, $channelReference, $customerChannelReference, $savedCard, $conversion);
+        parent::__construct($result, $transaction, $customer, $conversion, $savedCard);
     }
 
     /**
      * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
      */
-    public static function fromArray(array $body): static
+    protected static function parts(array $body): array
     {
-        $refund = is_array($body['refund'] ?? null) ? $body['refund'] : [];
-        $amount = $refund['amount'] ?? null;
+        $refund = self::object($body['refund'] ?? null);
 
-        return new static(
-            ...static::parts($body),
-            type: (string) ($refund['type'] ?? ''),
-            amount: $amount === null ? null : (string) $amount,
-        );
+        return [
+            ...parent::parts($body),
+            'refund' => $refund === null ? null : Refund::fromArray($refund),
+        ];
     }
 }

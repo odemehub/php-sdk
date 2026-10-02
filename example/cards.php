@@ -4,86 +4,64 @@ declare(strict_types=1);
 
 require_once __DIR__.'/page.php';
 
-use Gurmehub\Odemehub\Exception\OdemehubException;
-use Gurmehub\Odemehub\Exception\ValidationException;
-use Gurmehub\Odemehub\Request\DefaultSavedCard;
+use Gurmehub\Odemehub\Request\CreateSavedCard;
 use Gurmehub\Odemehub\Request\DeleteSavedCard;
-use Gurmehub\Odemehub\Request\NamedCustomer;
-use Gurmehub\Odemehub\Request\SavedCards;
+use Gurmehub\Odemehub\Request\RetrieveSavedCardsByReference;
+use Gurmehub\Odemehub\Request\UpdateSavedCard;
 
 /*
 |--------------------------------------------------------------------------
 | Kayıtlı kartlar
 |--------------------------------------------------------------------------
 |
-| Müşterinin sakladığı kartlar listelenir, biri varsayılan yapılır ya da
-| bırakılır. Müşteri yalnızca adıyla anılır: geldiği kanal (istemcide) ve
-| sizin ona verdiğiniz numara. Hiç görülmemiş bir müşteri burada açılmaz,
-| geçit onu bulamadığını söyler.
-|
-| Kart saklamanın kendisi ödemeyle birlikte olur ("kartımı kaydet") ya da
-| save-card uç noktasıyla tek başına; listeleme kartı çekebilecek bir şey
-| döndürmez, kart yalnızca numarasıyla anılır.
+| Bir kart ödeme yapılmadan saklanır, müşterinin kartları listelenir, biri
+| varsayılan yapılır ya da silinir. Kart iki şeyin altında durur: kanal
+| (istemcide) ve müşteri referansı. Liste de bu ikisiyle sorulur. Liste
+| kartı çekebilecek bir şey döndürmez; kart yalnızca ilk ve son haneleriyle
+| anılır.
 |
 */
 
-$cards = null;
 $message = null;
-$successful = false;
 
 /** @var array<string, list<string>> $errors */
 $errors = [];
 
-$customerReference = posted('customer_channel_reference');
+$outcome = match (isSubmitted() ? posted('action') : null) {
+    'create' => attempt(fn () => client()->createSavedCard(new CreateSavedCard(
+        customer: postedCustomer(),
+        card: postedCard(),
+        paymentProviderToken: postedOrNull('payment_provider_token'),
+    )), $message, $errors),
+    'default' => attempt(fn () => client()->updateSavedCard(new UpdateSavedCard(posted('saved_card_token'))), $message, $errors),
+    'delete' => attempt(fn () => client()->deleteSavedCard(new DeleteSavedCard(posted('saved_card_token'))), $message, $errors),
+    default => null,
+};
 
-if (isSubmitted() && $customerReference !== '') {
-    $customer = new NamedCustomer($customerReference);
-
-    try {
-        $savedCardToken = posted('saved_card_token');
-
-        if (posted('action') === 'default' && $savedCardToken !== '') {
-            $done = client()->defaultSavedCard(new DefaultSavedCard($customer, $savedCardToken));
-            $message = $done->result->message ?? 'Varsayılan kart güncellendi.';
-            $successful = $done->result->successful;
-        }
-
-        if (posted('action') === 'delete' && $savedCardToken !== '') {
-            $done = client()->deleteSavedCard(new DeleteSavedCard($customer, $savedCardToken));
-            $message = $done->result->message ?? 'Kart silindi.';
-            $successful = $done->result->successful;
-        }
-
-        $cards = client()->savedCards(new SavedCards($customer));
-    } catch (ValidationException $exception) {
-        $message = $exception->getMessage();
-        $errors = $exception->errors;
-    } catch (OdemehubException $exception) {
-        $message = $exception->getMessage();
-    }
-}
+$cards = isSubmitted() && posted('customer_reference') !== ''
+    ? attempt(fn () => client()->retrieveSavedCardsByReference(new RetrieveSavedCardsByReference(
+        customerReference: posted('customer_reference'),
+    )), $message, $errors)
+    : null;
 
 pageStart('Kayıtlı kartlar');
 
-echo '<p class="lead">Müşterinin sakladığı kartlar; kanal istemcide tanımlıdır.</p>';
-
-notice($message, $successful);
-
-echo '<form method="post">';
-echo '<h2>Müşteri</h2><div class="grid"><div'.(isset($errors['customer.channel_reference']) ? ' class="invalid"' : '').'>';
-echo '<label for="customer_channel_reference">Müşteri no (sizdeki)</label>';
-echo '<input id="customer_channel_reference" name="customer_channel_reference" value="'.e($customerReference === '' ? (dummy()['customer_channel_reference'] ?? '') : $customerReference).'" required>';
-
-if (isset($errors['customer.channel_reference'][0])) {
-    echo '<p class="error">'.e($errors['customer.channel_reference'][0]).'</p>';
+if ($outcome !== null) {
+    notice($outcome->result->message ?? 'Tamam.', $outcome->result->successful);
+} else {
+    notice($message);
 }
 
-echo '</div></div>';
-echo '<div class="actions"><button class="button" type="submit">Kartları getir</button>';
-echo '<a class="button" href="index.php">Başa dön</a></div></form>';
+accountButtons();
+
+form([
+    'Müşteri' => customerFields(),
+    'Kart' => array_diff_key(cardFields(), ['card_should_save' => '']),
+    'Hesap' => ['payment_provider_token' => 'Ödeme hesabı (boş: varsayılan)'],
+], $errors, 'Kartı sakla', ['payment_provider_token', 'card_security_code'], null, ['action' => 'create']);
 
 if ($cards !== null) {
-    echo '<h2>Kartlar ('.count($cards->savedCards).')</h2>';
+    echo '<h2>'.e($cards->customer->reference).' — kartlar ('.count($cards->savedCards).')</h2>';
 
     if ($cards->savedCards === []) {
         echo '<p class="lead">Bu müşterinin kayıtlı kartı yok.</p>';
@@ -92,21 +70,17 @@ if ($cards !== null) {
     foreach ($cards->savedCards as $card) {
         echo '<form method="post"><table>';
         echo '<tr><td>token</td><td>'.e($card->token).'</td></tr>';
-        echo '<tr><td>kart</td><td>'.e($card->firstDigits.'****'.$card->lastFourDigit).'</td></tr>';
-        echo '<tr><td>şema</td><td>'.e($card->scheme ?? '-').'</td></tr>';
+        echo '<tr><td>kart</td><td>'.e($card->firstDigits.'****'.$card->lastFourDigit).' ('.e($card->scheme->value ?? '-').')</td></tr>';
         echo '<tr><td>son kullanma</td><td>'.e($card->expiryMonth.'/'.$card->expiryYear).'</td></tr>';
-        echo '<tr><td>ödeme hesabı</td><td>'.e((string) ($card->paymentProviderToken ?? '-')).'</td></tr>';
+        echo '<tr><td>ödeme hesabı</td><td>'.e($card->paymentProviderToken).'</td></tr>';
         echo '<tr><td>varsayılan</td><td>'.var_export($card->isDefault, true).'</td></tr>';
         echo '</table>';
 
-        echo '<input type="hidden" name="customer_channel_reference" value="'.e($customerReference).'">';
+        echo '<input type="hidden" name="customer_reference" value="'.e(posted('customer_reference')).'">';
+
         echo '<input type="hidden" name="saved_card_token" value="'.e($card->token).'">';
         echo '<div class="actions">';
-
-        if (! $card->isDefault) {
-            echo '<button class="button" type="submit" name="action" value="default">Varsayılan yap</button>';
-        }
-
+        echo $card->isDefault ? '' : '<button class="button" type="submit" name="action" value="default">Varsayılan yap</button>';
         echo '<button class="button" type="submit" name="action" value="delete">Sil</button>';
         echo '</div></form>';
     }

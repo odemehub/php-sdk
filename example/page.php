@@ -4,25 +4,32 @@ declare(strict_types=1);
 
 require_once __DIR__.'/config.php';
 
+use Gurmehub\Odemehub\Exception\OdemehubException;
+use Gurmehub\Odemehub\Exception\ValidationException;
+use Gurmehub\Odemehub\Request\Address;
 use Gurmehub\Odemehub\Request\Card;
 use Gurmehub\Odemehub\Request\Customer;
+use Gurmehub\Odemehub\Request\Item;
 use Gurmehub\Odemehub\Response\GiveBack;
+use Gurmehub\Odemehub\Response\Order;
 use Gurmehub\Odemehub\Response\Payment;
+use Gurmehub\Odemehub\Response\PaymentLink;
+use Gurmehub\Odemehub\Response\Subscription;
 
 /*
 |--------------------------------------------------------------------------
 | Örneklerin ortak parçaları
 |--------------------------------------------------------------------------
 |
-| İki ödeme türü de aynı formu doldurur, aynı alanları POST eder ve sonucu
-| aynı biçimde gösterir. Türden türe değişen tek şey isteğin kendisi olduğu
-| için sayfa iskeleti, form ve gönderilen alanları okuma işi burada durur.
+| Her sayfa aynı iskeleti, aynı form yardımcılarını ve aynı sonuç tablolarını
+| kullanır. Sayfadan sayfaya değişen tek şey geçide atılan istek olduğu için
+| geri kalan her şey burada durur.
 |
 */
 
 /**
- * Formun açıldığı örnek değerler. Sipariş numarası her açılışta değişir ki
- * aynı numara iki kez gönderilmek zorunda kalınmasın.
+ * Formların açıldığı örnek değerler. Referans her açılışta değişir ki aynı
+ * referans iki kez gönderilmek zorunda kalınmasın.
  *
  * @return array<string, string>
  */
@@ -37,79 +44,35 @@ function dummy(): array
         'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
         'payment_provider_token' => '',
 
-        'customer_channel_reference' => 'musteri-1',
+        'customer_reference' => 'musteri-1',
         'customer_firstname' => 'Ahmet',
         'customer_lastname' => 'Yılmaz',
+        'customer_email' => 'ahmet@ornek.com',
+        'customer_phone' => '05550000000',
         'customer_address' => 'Kızılırmak Mah. Dumlupınar Blv. No:3',
         'customer_district' => 'Çankaya',
         'customer_province' => 'Ankara',
-        'customer_country' => 'Türkiye',
-        'customer_email' => 'ahmet@ornek.com',
-        'customer_phone' => '05550000000',
+        'customer_country' => 'TR',
 
         'card_holder_name' => 'Ahmet Yılmaz',
         'card_number' => '5528790000000008',
         'card_security_code' => '123',
         'card_expiry_month' => '12',
         'card_expiry_year' => '2030',
+        'card_should_save' => '',
 
         'callback_url' => callbackUrl(),
+        'success_url' => callbackUrl(),
+        'item_name' => 'Deneme ürünü',
+        'item_unit_amount' => '120.00',
+        'item_quantity' => '1',
+        'item_tax_rate' => '20',
     ];
 }
 
 /**
- * Formun alanları, başlıkları altında. Alan adlarındaki alt çizgi, istek
- * gövdesindeki nokta yerine geçer: `customer_firstname` -> `customer.firstname`.
- *
- * @return array<string, array<string, string>>
- */
-function fields(): array
-{
-    return [
-        'Ödeme' => [
-            'channel_reference' => 'Sipariş no',
-            'amount' => 'Çekilecek tutar',
-            'base_amount' => 'Satılan tutar (boş bırakılırsa çekilecek tutarla aynı)',
-            'currency' => 'Para birimi',
-            'installment_number' => 'Taksit',
-            'ip' => 'Müşterinin IP adresi',
-            'payment_provider_token' => 'Ödeme hesabı token',
-        ],
-        'Müşteri' => [
-            'customer_channel_reference' => 'Müşteri no (sizdeki)',
-            'customer_firstname' => 'Ad',
-            'customer_lastname' => 'Soyad',
-            'customer_email' => 'E-posta',
-            'customer_phone' => 'Telefon',
-            'customer_address' => 'Adres',
-            'customer_district' => 'İlçe',
-            'customer_province' => 'İl',
-            'customer_country' => 'Ülke',
-        ],
-        'Kart' => [
-            'card_holder_name' => 'Kart üzerindeki isim',
-            'card_number' => 'Kart numarası',
-            'card_security_code' => 'CVV',
-            'card_expiry_month' => 'Son kullanma ayı',
-            'card_expiry_year' => 'Son kullanma yılı',
-        ],
-    ];
-}
-
-/**
- * Boş bırakılabilen alanlar: ödeme hesabı verilmezse firmanın varsayılanı,
- * para birimi verilmezse lira kullanılır.
- *
- * @return list<string>
- */
-function optionalFields(): array
-{
-    return ['payment_provider_token', 'currency'];
-}
-
-/**
- * Bir alanın gösterilecek değeri: form geri geldiyse gönderilen değer,
- * ilk açılışta örnek değer.
+ * Bir alanın gösterilecek değeri: form geri geldiyse gönderilen değer, ilk
+ * açılışta örnek değer.
  */
 function value(string $field): string
 {
@@ -125,20 +88,35 @@ function posted(string $field): string
 }
 
 /**
- * Formdaki müşteri.
+ * Gönderilen bir alanın değeri, boşsa hiç.
+ */
+function postedOrNull(string $field): ?string
+{
+    return posted($field) === '' ? null : posted($field);
+}
+
+function isSubmitted(): bool
+{
+    return ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+}
+
+/**
+ * Formdaki müşteri: referansı ve fatura adresi.
  */
 function postedCustomer(): Customer
 {
     return new Customer(
-        channelReference: posted('customer_channel_reference'),
-        firstname: posted('customer_firstname'),
-        lastname: posted('customer_lastname'),
-        address: posted('customer_address'),
-        district: posted('customer_district'),
-        province: posted('customer_province'),
-        country: posted('customer_country'),
-        email: posted('customer_email'),
-        phone: posted('customer_phone'),
+        reference: postedOrNull('customer_reference'),
+        billingAddress: new Address(
+            firstname: postedOrNull('customer_firstname'),
+            lastname: postedOrNull('customer_lastname'),
+            email: postedOrNull('customer_email'),
+            phone: postedOrNull('customer_phone'),
+            address: postedOrNull('customer_address'),
+            district: postedOrNull('customer_district'),
+            province: postedOrNull('customer_province'),
+            country: postedOrNull('customer_country'),
+        ),
     );
 }
 
@@ -150,15 +128,29 @@ function postedCard(): Card
     return new Card(
         holderName: posted('card_holder_name'),
         number: posted('card_number'),
-        securityCode: posted('card_security_code'),
         expiryMonth: posted('card_expiry_month'),
         expiryYear: posted('card_expiry_year'),
+        securityCode: posted('card_security_code'),
+        shouldSave: posted('card_should_save') === '' ? null : true,
     );
 }
 
 /**
- * Her iki ödeme türünün de ortak aldığı alanlar, istek nesnesine adlarıyla
- * açılmak üzere: `new RegularPayment(...postedPayment())`.
+ * Formdaki tek kalem.
+ */
+function postedItem(): Item
+{
+    return new Item(
+        name: posted('item_name'),
+        unitAmount: posted('item_unit_amount'),
+        quantity: (int) posted('item_quantity'),
+        taxRate: posted('item_tax_rate'),
+    );
+}
+
+/**
+ * Formdaki ödeme, SecurePayment ya da RegularPayment'a adlandırılmış
+ * argüman olarak açılacak biçimde: `new RegularPayment(...postedPayment())`.
  *
  * @return array<string, mixed>
  */
@@ -167,22 +159,39 @@ function postedPayment(): array
     return [
         'channelReference' => posted('channel_reference'),
         'amount' => posted('amount'),
-        'baseAmount' => posted('base_amount') === '' ? null : posted('base_amount'),
         'installmentNumber' => (int) posted('installment_number'),
         'ip' => posted('ip'),
         'customer' => postedCustomer(),
-        'card' => postedCard(),
-        'currency' => posted('currency') === '' ? null : posted('currency'),
-        'paymentProviderToken' => posted('payment_provider_token') === '' ? null : posted('payment_provider_token'),
+        'card' => postedOrNull('saved_card_token') === null ? postedCard() : null,
+        'savedCardToken' => postedOrNull('saved_card_token'),
+        'currency' => postedOrNull('currency') === null ? null : Currency::from(posted('currency')),
+        'paymentProviderToken' => postedOrNull('payment_provider_token'),
+        'baseAmount' => postedOrNull('base_amount'),
     ];
 }
 
 /**
- * Sayfaya form gönderildi mi.
+ * Bir isteği atar; geçidin reddi formun hatalarına, kalan her şey mesaja
+ * yazılır. Başarılı yanıt olduğu gibi döner.
+ *
+ * @template T
+ *
+ * @param  callable(): T  $call
+ * @param  array<string, list<string>>  $errors
+ * @return T|null
  */
-function isSubmitted(): bool
+function attempt(callable $call, ?string &$message, array &$errors): mixed
 {
-    return ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+    try {
+        return $call();
+    } catch (ValidationException $exception) {
+        $message = $exception->getMessage();
+        $errors = $exception->errors;
+    } catch (OdemehubException $exception) {
+        $message = $exception->getMessage();
+    }
+
+    return null;
 }
 
 function e(?string $text): string
@@ -210,15 +219,14 @@ function pageStart(string $title): void
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
         label { display: block; font-size: .8rem; opacity: .7; margin-bottom: .25rem; }
         .required { color: #dc2626; }
-        input { width: 100%; box-sizing: border-box; padding: .5rem; border: 1px solid; border-radius: .375rem; background: none; color: inherit; font: inherit; }
+        input { width: 100%; box-sizing: border-box; padding: .5rem; border: 1px solid #8884; border-radius: .4rem; font: inherit; background: none; color: inherit; }
         .invalid input { border-color: #dc2626; }
-        .invalid label { opacity: 1; color: #dc2626; }
-        .error { font-size: .8rem; color: #dc2626; margin: .25rem 0 0; }
+        .error { color: #dc2626; font-size: .8rem; margin: .25rem 0 0; }
         .notice { padding: .75rem 1rem; border: 1px solid #dc2626; border-radius: .5rem; margin-bottom: 1.5rem; }
         .notice.ok { border-color: #16a34a; }
         table { border-collapse: collapse; width: 100%; }
-        td { padding: .4rem .5rem; border-bottom: 1px solid; vertical-align: top; }
-        td:first-child { opacity: .6; width: 12rem; }
+        td { padding: .4rem .5rem; border-bottom: 1px solid #8884; vertical-align: top; font-family: ui-monospace, monospace; font-size: .85rem; }
+        td:first-child { opacity: .6; white-space: nowrap; }
     </style></head><body><main>';
     echo '<h1>'.e($title).'</h1>';
 }
@@ -228,10 +236,6 @@ function pageEnd(): void
     echo '</main></body></html>';
 }
 
-/**
- * Sayfanın başındaki tek satırlık bildirim: ödeme geçidinin reddi ya da
- * sonucun kendi mesajı.
- */
 function notice(?string $message, bool $successful = false): void
 {
     if ($message === null || $message === '') {
@@ -242,37 +246,50 @@ function notice(?string $message, bool $successful = false): void
 }
 
 /**
- * Bir alanın adının istek gövdesindeki karşılığı; alan hataları geçitten o
- * adla gelir.
+ * Bir form alanının istek gövdesindeki karşılığı; alan hataları geçitten o
+ * adla gelir: `customer_firstname` -> `customer.billing_address.firstname`.
  */
 function parameter(string $field): string
 {
-    return preg_replace('/^(customer|card)_/', '$1.', $field) ?? $field;
+    return match (true) {
+        $field === 'customer_reference' => 'customer.reference',
+        str_starts_with($field, 'customer_') => 'customer.billing_address.'.substr($field, 9),
+        str_starts_with($field, 'card_') => 'card.'.substr($field, 5),
+        str_starts_with($field, 'item_') => 'items.0.'.substr($field, 5),
+        default => $field,
+    };
 }
 
 /**
- * Kart sormayan sayfaların formu: başlıklar altında düz alanlar, her biri
- * etiketi ve formun açıldığı değerle. Geçitten dönen alan hataları hem
- * alanın kendi adıyla hem de gövdedeki noktalı adıyla aranır, çünkü aynı
- * alan `order.channel_reference` gibi bir grubun altında da olabilir.
+ * Başlıklar altında düz alanlar, her biri etiketi ve açılış değeriyle.
+ * Geçitten dönen alan hataları hem alanın adıyla hem de gövdedeki noktalı
+ * adıyla aranır; grup adı verildiyse (`order`, `transaction`) onun altında
+ * da bakılır.
  *
- * @param  array<string, array<string, array{0: string, 1: string}>>  $sections
+ * @param  array<string, array<string, string>>  $sections
  * @param  array<string, list<string>>  $errors
+ * @param  list<string>  $optional
+ * @param  array<string, string>  $hidden
  */
-function sections(array $sections, array $errors, string $submitLabel): void
+function form(array $sections, array $errors, string $submitLabel, array $optional = [], ?string $group = null, array $hidden = []): void
 {
     echo '<form method="post">';
+
+    foreach ($hidden as $name => $value) {
+        echo '<input type="hidden" name="'.e($name).'" value="'.e($value).'">';
+    }
 
     foreach ($sections as $section => $labels) {
         echo '<h2>'.e($section).'</h2><div class="grid">';
 
-        foreach ($labels as $field => [$label, $default]) {
-            $error = $errors[$field][0] ?? $errors[parameter($field)][0] ?? null;
-            $value = isset($_POST[$field]) ? posted($field) : $default;
+        foreach ($labels as $field => $label) {
+            $parameter = parameter($field);
+            $error = $errors[$field][0] ?? $errors[$parameter][0] ?? ($group === null ? null : ($errors[$group.'.'.$parameter][0] ?? null));
+            $required = in_array($field, $optional, true) ? '' : ' required';
 
             echo '<div'.($error === null ? '' : ' class="invalid"').'>';
-            echo '<label for="'.e($field).'">'.e($label).'</label>';
-            echo '<input id="'.e($field).'" name="'.e($field).'" value="'.e($value).'">';
+            echo '<label for="'.e($field).'">'.e($label).($required === '' ? '' : ' <span class="required">*</span>').'</label>';
+            echo '<input id="'.e($field).'" name="'.e($field).'" value="'.e(value($field)).'"'.$required.'>';
 
             if ($error !== null) {
                 echo '<p class="error">'.e($error).'</p>';
@@ -291,66 +308,87 @@ function sections(array $sections, array $errors, string $submitLabel): void
 }
 
 /**
- * Müşterinin alanları, bütün bir müşteri taşıyan her formun sorduğu gibi:
- * etiketleri ve örnek değerleriyle.
+ * Müşteri bölümünün alanları.
  *
- * @return array<string, array{0: string, 1: string}>
+ * @return array<string, string>
  */
-function customerSection(): array
+function customerFields(): array
 {
-    $customer = [];
-
-    foreach (fields()['Müşteri'] as $field => $label) {
-        $customer[$field] = [$label, dummy()[$field] ?? ''];
-    }
-
-    return $customer;
+    return [
+        'customer_reference' => 'Müşteri referansı (sizdeki)',
+        'customer_firstname' => 'Ad',
+        'customer_lastname' => 'Soyad',
+        'customer_email' => 'E-posta',
+        'customer_phone' => 'Telefon',
+        'customer_address' => 'Adres',
+        'customer_district' => 'İlçe',
+        'customer_province' => 'İl',
+        'customer_country' => 'Ülke',
+    ];
 }
 
 /**
- * Ödeme formu, dönen alan hatalarıyla birlikte. Türe özgü alanlar, kendi
- * başlıkları altında sona eklenir.
+ * Kart bölümünün alanları.
+ *
+ * @return array<string, string>
+ */
+function cardFields(): array
+{
+    return [
+        'card_holder_name' => 'Kart üzerindeki isim',
+        'card_number' => 'Kart numarası',
+        'card_security_code' => 'CVV',
+        'card_expiry_month' => 'Son kullanma ayı',
+        'card_expiry_year' => 'Son kullanma yılı',
+        'card_should_save' => 'Kartı sakla (dolu: evet)',
+    ];
+}
+
+/**
+ * Tek kalemlik bölümün alanları.
+ *
+ * @return array<string, string>
+ */
+function itemFields(): array
+{
+    return [
+        'item_name' => 'Kalem adı',
+        'item_unit_amount' => 'Birim tutar (KDV dahil)',
+        'item_quantity' => 'Adet',
+        'item_tax_rate' => 'KDV oranı (%)',
+    ];
+}
+
+/**
+ * Ödeme formu: işlem, müşteri ve kart alanları, üstte test hesabı düğmeleri.
  *
  * @param  array<string, list<string>>  $errors
  * @param  array<string, array<string, string>>  $extraSections
  */
 function paymentForm(array $errors = [], array $extraSections = []): void
 {
-    echo '<form method="post">';
-
     accountButtons();
 
-    foreach ([...fields(), ...$extraSections] as $section => $labels) {
-        echo '<h2>'.e($section).'</h2><div class="grid">';
-
-        foreach ($labels as $field => $label) {
-            $error = $errors[parameter($field)][0] ?? null;
-            $required = in_array($field, optionalFields(), true) ? '' : ' required';
-
-            echo '<div'.($error === null ? '' : ' class="invalid"').'>';
-            echo '<label for="'.e($field).'">'.e($label).($required === '' ? '' : ' <span class="required">*</span>').'</label>';
-            echo '<input id="'.e($field).'" name="'.e($field).'" value="'.e(value($field)).'"'.$required.'>';
-
-            if ($error !== null) {
-                echo '<p class="error">'.e($error).'</p>';
-            }
-
-            echo '</div>';
-        }
-
-        echo '</div>';
-    }
-
-    echo '<div class="actions">';
-    echo '<button class="button" type="submit">Ödeme yap</button>';
-    echo '<a class="button" href="index.php">Vazgeç</a>';
-    echo '</div></form>';
+    form([
+        'İşlem' => [
+            'channel_reference' => 'Referans (sizdeki)',
+            'amount' => 'Tutar',
+            'base_amount' => 'Satılan tutar (boş: tutarla aynı)',
+            'currency' => 'Para birimi',
+            'installment_number' => 'Taksit',
+            'ip' => 'Müşteri IP',
+            'payment_provider_token' => 'Ödeme hesabı (boş: varsayılan)',
+            'saved_card_token' => 'Kayıtlı kart token (dolu: kart alanları gönderilmez)',
+        ],
+        ...$extraSections,
+        'Müşteri' => customerFields(),
+        'Kart' => cardFields(),
+    ], $errors, 'Ödeme yap', ['base_amount', 'currency', 'payment_provider_token', 'saved_card_token', 'card_should_save', 'customer_reference'], 'transaction');
 }
 
 /**
- * Hangi ödeme hesabıyla deneneceğini seçen düğmeler. Seçilen hesabın
- * numarası ve o sağlayıcının kendi test kartı forma yazılır; kart alanları
- * elle de değiştirilebilir, düğme yalnızca doldurur.
+ * Hangi ödeme hesabıyla deneneceğini seçen düğmeler. Seçilen hesabın token'ı
+ * ve o sağlayıcının kendi test kartı forma yazılır.
  */
 function accountButtons(): void
 {
@@ -361,21 +399,16 @@ function accountButtons(): void
         unset($account['secure_password']);
 
         echo '<button type="button" class="button" data-account="'.e(json_encode($account)).'"';
-        echo $password === '' ? '' : ' title="3D şifresi: '.e($password).'"';
-        echo '>'.e($label).'</button>';
+        echo ($password === '' ? '' : ' title="3D şifresi: '.e($password).'"').'>'.e($label).'</button>';
     }
 
     echo '</div>';
-
     echo '<script>
         document.querySelectorAll("[data-account]").forEach((button) => {
             button.addEventListener("click", () => {
                 Object.entries(JSON.parse(button.dataset.account)).forEach(([name, value]) => {
                     const field = document.querySelector(`[name="${name}"]`);
-
-                    if (field) {
-                        field.value = value;
-                    }
+                    if (field) field.value = value;
                 });
             });
         });
@@ -383,92 +416,82 @@ function accountButtons(): void
 }
 
 /**
- * Bir ödemenin sonucu, geçidin bildirdiği gibi. Reddedilmiş bir ödeme de bir
- * sonuçtur, hata değildir.
+ * Bir ödeme sonucunun tablosu.
  *
- * @param  array<string, ?string>  $extra  Türe özgü alanlar, örneğin payment_id.
+ * @param  array<string, string|null>  $extra
  */
 function paymentResult(Payment $payment, array $extra = []): void
 {
-    notice($payment->result->message, $payment->result->successful);
+    notice($payment->result->message ?? ($payment->result->successful ? 'Ödeme başarılı.' : 'Ödeme bekliyor.'), $payment->result->successful);
 
     echo '<table>';
     echo '<tr><td>result.successful</td><td>'.var_export($payment->result->successful, true).'</td></tr>';
-    echo '<tr><td>transaction.token</td><td>'.e($payment->transactionToken).'</td></tr>';
-    echo '<tr><td>transaction.channel_token</td><td>'.e($payment->channelToken).'</td></tr>';
-    echo '<tr><td>transaction.channel_reference</td><td>'.e($payment->channelReference).'</td></tr>';
-    echo '<tr><td>customer.channel_reference</td><td>'.e($payment->customerChannelReference).'</td></tr>';
+    echo '<tr><td>transaction.token</td><td>'.e($payment->transaction->token).'</td></tr>';
+    echo '<tr><td>transaction.channel_token</td><td>'.e($payment->transaction->channelToken).'</td></tr>';
+    echo '<tr><td>transaction.channel_reference</td><td>'.e($payment->transaction->channelReference).'</td></tr>';
+    echo '<tr><td>transaction.status / payment_status</td><td>'.e(($payment->transaction->status->value ?? '-').' / '.($payment->transaction->paymentStatus->value ?? '-')).'</td></tr>';
+    echo '<tr><td>transaction.amount</td><td>'.e(($payment->transaction->amount ?? '-').' '.($payment->transaction->currency->value ?? '').' ('.($payment->transaction->installmentNumber ?? 1).' taksit)').'</td></tr>';
+    echo '<tr><td>transaction.is_test</td><td>'.var_export($payment->transaction->isTest, true).'</td></tr>';
+    echo '<tr><td>customer.reference</td><td>'.e($payment->customer?->reference ?? '-').'</td></tr>';
+    echo '<tr><td>conversion</td><td>'.e($payment->conversion === null ? '-' : $payment->conversion->amount.' '.($payment->conversion->currency->value ?? '').' @ '.$payment->conversion->rate).'</td></tr>';
 
     if ($payment->savedCard !== null) {
         echo '<tr><td>saved_card.token</td><td>'.e($payment->savedCard->token).'</td></tr>';
         echo '<tr><td>saved_card</td><td>'.e($payment->savedCard->firstDigits.'****'.$payment->savedCard->lastFourDigit).'</td></tr>';
     }
 
-    foreach ($extra as $field => $extraValue) {
-        echo '<tr><td>'.e($field).'</td><td>'.e($extraValue ?? '-').'</td></tr>';
+    if ($payment instanceof GiveBack && $payment->refund !== null) {
+        echo '<tr><td>refund.type</td><td>'.e($payment->refund->type->value ?? '-').'</td></tr>';
+        echo '<tr><td>refund.amount</td><td>'.e($payment->refund->amount).'</td></tr>';
+    }
+
+    foreach ($extra as $field => $value) {
+        echo '<tr><td>'.e($field).'</td><td>'.e($value ?? '-').'</td></tr>';
     }
 
     echo '</table>';
-    echo '<div class="actions"><a class="button" href="index.php">Yeni ödeme</a></div>';
+    echo '<div class="actions"><a class="button" href="index.php">Başa dön</a></div>';
 }
 
 /**
- * İade/iptal formu. Ödemenin geçitteki numarası yeterlidir; hesabı,
- * sağlayıcıyı ve sağlayıcının ödemeye verdiği referansı geçit zaten bilir.
- *
- * Tutar boş bırakılabilir: o zaman ödemenin iade edilebilir kalanının tamamı
- * geri verilir. İptalde tutar hiç gönderilmez, iptal her zaman tamamıdır.
- *
- * @param  array<string, list<string>>  $errors
+ * Bir siparişin, aboneliğin ya da ödeme linkinin tablosu.
  */
-function giveBackForm(array $errors = []): void
+function checkoutResult(Order|Subscription|PaymentLink $thing): void
 {
-    $labels = [
-        'transaction_token' => "İşlem token'ı (transaction.token)",
-        'amount' => 'Tutar (boş bırakılırsa kalanın tamamı)',
-    ];
-
-    echo '<form method="post">';
-    echo '<h2>İade / iptal</h2><div class="grid">';
-
-    foreach ($labels as $field => $label) {
-        $error = $errors[$field === 'transaction_token' ? 'transaction.token' : $field][0] ?? null;
-        $required = $field === 'transaction_token' ? ' required' : '';
-
-        echo '<div'.($error === null ? '' : ' class="invalid"').'>';
-        echo '<label for="'.e($field).'">'.e($label).'</label>';
-        echo '<input id="'.e($field).'" name="'.e($field).'" value="'.e(posted($field)).'"'.$required.'>';
-
-        if ($error !== null) {
-            echo '<p class="error">'.e($error).'</p>';
-        }
-
-        echo '</div>';
-    }
-
-    echo '</div>';
-
-    echo '<div class="actions">';
-    echo '<button class="button" type="submit" name="type" value="refund">İade et</button>';
-    echo '<button class="button" type="submit" name="type" value="cancel">İptal et</button>';
-    echo '<a class="button" href="index.php">Vazgeç</a>';
-    echo '</div></form>';
-}
-
-/**
- * İade ya da iptalin sonucu. Sağlayıcının reddettiği bir deneme de bir
- * sonuçtur, hata değildir.
- */
-function giveBackResult(GiveBack $result): void
-{
-    notice($result->result->message, $result->result->successful);
-
     echo '<table>';
-    echo '<tr><td>result.successful</td><td>'.var_export($result->result->successful, true).'</td></tr>';
-    echo '<tr><td>transaction.token</td><td>'.e($result->transactionToken).'</td></tr>';
-    echo '<tr><td>transaction.channel_reference</td><td>'.e($result->channelReference).'</td></tr>';
-    echo '<tr><td>refund.type</td><td>'.e($result->type).'</td></tr>';
-    echo '<tr><td>refund.amount</td><td>'.e($result->amount ?? '-').'</td></tr>';
+    echo '<tr><td>token</td><td>'.e($thing->token).'</td></tr>';
+    echo '<tr><td>channel_reference</td><td>'.e($thing->channelReference).'</td></tr>';
+
+    if (! $thing instanceof PaymentLink) {
+        echo '<tr><td>status</td><td>'.e($thing->status->value ?? '-').'</td></tr>';
+        echo '<tr><td>shipping_amount</td><td>'.e($thing->shippingAmount).'</td></tr>';
+    }
+
+    if ($thing instanceof Subscription) {
+        echo '<tr><td>period</td><td>'.e($thing->period->value ?? '-').'</td></tr>';
+        echo '<tr><td>renewal_limit</td><td>'.e((string) ($thing->renewalLimit ?? '-')).'</td></tr>';
+        echo '<tr><td>renewals_paid</td><td>'.e((string) $thing->renewalsPaid).'</td></tr>';
+        echo '<tr><td>renewal.token</td><td>'.e($thing->renewal->token).'</td></tr>';
+        echo '<tr><td>next_payment_at</td><td>'.e($thing->nextPaymentAt ?? '-').'</td></tr>';
+        echo '<tr><td>cancelled_at</td><td>'.e($thing->cancelledAt ?? '-').'</td></tr>';
+    }
+
+    if ($thing instanceof PaymentLink) {
+        echo '<tr><td>is_active</td><td>'.var_export($thing->isActive, true).'</td></tr>';
+        echo '<tr><td>expires_at</td><td>'.e($thing->expiresAt ?? '-').'</td></tr>';
+        echo '<tr><td>is_test</td><td>'.var_export($thing->isTest, true).'</td></tr>';
+    } else {
+        echo '<tr><td>customer.reference</td><td>'.e($thing->customer?->reference ?? '-').'</td></tr>';
+    }
+
+    echo '<tr><td>subtotal</td><td>'.e($thing->subtotal).'</td></tr>';
+    echo '<tr><td>tax_amount</td><td>'.e($thing->taxAmount).'</td></tr>';
+    echo '<tr><td>amount</td><td>'.e($thing->amount.' '.($thing->currency->value ?? '')).'</td></tr>';
+    echo '<tr><td>checkout_url</td><td>'.($thing->checkoutUrl === null ? '-' : '<a href="'.e($thing->checkoutUrl).'">'.e($thing->checkoutUrl).'</a>').'</td></tr>';
+
+    if ($thing instanceof Order && $thing->transaction !== null) {
+        echo '<tr><td>transaction.token</td><td>'.e($thing->transaction->token).'</td></tr>';
+    }
+
     echo '</table>';
-    echo '<div class="actions"><a class="button" href="refund.php">Yeni iade</a><a class="button" href="index.php">Başa dön</a></div>';
 }

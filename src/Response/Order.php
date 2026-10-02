@@ -4,50 +4,62 @@ declare(strict_types=1);
 
 namespace Gurmehub\Odemehub\Response;
 
+use Gurmehub\Odemehub\Enum\Currency;
+use Gurmehub\Odemehub\Enum\OrderStatus;
+
 /**
- * An order as the gateway keeps it: what is being paid for, what it comes
- * to, where it stands and — once it is paid — the payment that paid it.
- * The same answer comes back whether the order has just been opened, asked
- * after, or the gateway is telling the merchant it was paid.
+ * An order as the gateway keeps it: what is being paid for, how it may be
+ * shipped, what it comes to, where it stands and — once it is paid — the
+ * payment that paid it. The same shape comes back whether the order has
+ * just been opened, changed, asked after or listed, and in the
+ * `order.*` webhook.
  *
- * Nothing is charged when an order is opened: the customer has to be sent
- * to `checkoutUrl` and gives their card there. What becomes of it is
- * posted to the merchant's webhook address, if it gave one, and is always
- * there to be asked after by the order's token.
+ * The totals are the gateway's: `subtotal` is the lines net of tax,
+ * `shippingAmount` the picked method net of tax, `taxAmount` the tax on
+ * both, and `amount` the whole that is charged.
  */
 final readonly class Order
 {
+    use ReadsFields;
+
     /**
-     * @param  list<OrderItem>  $items  What the order is made up of.
+     * @param  list<Item>  $items  What the order is made up of.
+     * @param  list<ShippingMethod>  $shippingMethods  The ways the goods may be sent, for the payer to pick from.
      */
     public function __construct(
-        public Result $result,
-        /** The order's token in the gateway; name it here to ask after it later. */
+        /** The order's token in the gateway; name it here to ask after or change it later. */
         public string $token,
         /** The channel the order was opened on. */
         public string $channelToken,
-        /** The number the order is known by in the calling system. */
+        /** The reference the order is known by in the calling system. */
         public string $channelReference,
         public ?string $description,
-        /** Where the order stands: open until it is paid, then paid. */
-        public string $status,
+        /** The account the order was opened with; null when none was named, in which case it is picked at pay time. */
+        public ?string $paymentProviderToken,
+        /** Where the order stands: `open` until it is paid, then `paid`. */
+        public ?OrderStatus $status,
         public array $items,
-        /** What the lines come to before tax; null when no line carried a rate. */
-        public ?string $subtotal,
-        /** The tax the order carries; null when no line carried a rate. */
-        public ?string $taxAmount,
-        /** What the order comes to, added up from its lines by the gateway. */
+        public array $shippingMethods,
+        /** The way the payer picked; null until they have. */
+        public ?ShippingMethod $shippingMethod,
+        /** What the lines come to before tax. */
+        public string $subtotal,
+        /** What the picked shipping method costs before tax. */
+        public string $shippingAmount,
+        /** The tax on the lines and the shipping together. */
+        public string $taxAmount,
+        /** What the order comes to in all, which is what the card is charged. */
         public string $amount,
-        public string $currency,
+        public ?Currency $currency,
         /** Whether it was paid in the test environment; nothing until it is paid. */
         public ?bool $isTest,
         public ?string $createdAt,
         /** Where the customer pays, while the order is still open; null once it is paid. */
         public ?string $checkoutUrl,
-        /** The token of the payment that paid the order, which names it again for a refund; null while it is open. */
-        public ?string $transactionToken,
-        /** The merchant's own key for the customer the order is for; null for an order opened without one. */
-        public ?string $customerChannelReference,
+        /** The payment that paid the order, which names it again for a refund; null while it is open. */
+        public ?TransactionReference $transaction,
+        /** Who the order is for; null while nobody has said. */
+        public ?NamedCustomer $customer = null,
     ) {}
 
     /**
@@ -55,47 +67,38 @@ final readonly class Order
      */
     public function isPaid(): bool
     {
-        return $this->status === 'paid';
+        return $this->status === OrderStatus::Paid;
     }
 
     /**
-     * @param  array<string, mixed>  $body
+     * @param  array<string, mixed>  $order
      */
-    public static function fromArray(array $body): self
+    public static function fromArray(array $order): self
     {
-        $order = is_array($body['order'] ?? null) ? $body['order'] : [];
-        $transaction = is_array($order['transaction'] ?? null) ? $order['transaction'] : [];
-        $customer = is_array($body['customer'] ?? null) ? $body['customer'] : [];
+        $shippingMethod = self::object($order['shipping_method'] ?? null);
+        $transaction = self::object($order['transaction'] ?? null);
+        $customer = self::object($order['customer'] ?? null);
 
         return new self(
-            result: Result::fromArray($body),
-            token: (string) ($order['token'] ?? ''),
-            channelToken: (string) ($order['channel_token'] ?? ''),
-            channelReference: (string) ($order['channel_reference'] ?? ''),
+            token: self::text($order['token'] ?? null),
+            channelToken: self::text($order['channel_token'] ?? null),
+            channelReference: self::text($order['channel_reference'] ?? null),
             description: self::said($order['description'] ?? null),
-            status: (string) ($order['status'] ?? ''),
-            items: array_values(array_map(
-                static fn (mixed $item): OrderItem => OrderItem::fromArray(is_array($item) ? $item : []),
-                is_array($order['items'] ?? null) ? $order['items'] : [],
-            )),
-            subtotal: self::said($order['subtotal'] ?? null),
-            taxAmount: self::said($order['tax_amount'] ?? null),
-            amount: (string) ($order['amount'] ?? ''),
-            currency: (string) ($order['currency'] ?? ''),
-            isTest: isset($order['is_test']) ? (bool) $order['is_test'] : null,
+            paymentProviderToken: self::said($order['payment_provider_token'] ?? null),
+            status: self::oneOf(OrderStatus::class, $order['status'] ?? null),
+            items: self::each($order['items'] ?? null, Item::fromArray(...)),
+            shippingMethods: self::each($order['shipping_methods'] ?? null, ShippingMethod::fromArray(...)),
+            shippingMethod: $shippingMethod === null ? null : ShippingMethod::fromArray($shippingMethod),
+            subtotal: self::text($order['subtotal'] ?? null),
+            shippingAmount: self::text($order['shipping_amount'] ?? null),
+            taxAmount: self::text($order['tax_amount'] ?? null),
+            amount: self::text($order['amount'] ?? null),
+            currency: self::oneOf(Currency::class, $order['currency'] ?? null),
+            isTest: self::flag($order['is_test'] ?? null),
             createdAt: self::said($order['created_at'] ?? null),
             checkoutUrl: self::said($order['checkout_url'] ?? null),
-            transactionToken: self::said($transaction['token'] ?? null),
-            customerChannelReference: self::said($customer['channel_reference'] ?? null),
+            transaction: $transaction === null ? null : TransactionReference::fromArray($transaction),
+            customer: $customer === null ? null : NamedCustomer::fromArray($customer),
         );
-    }
-
-    /**
-     * A field the gateway left empty reads as nothing rather than as an
-     * empty string, so there is one way of asking whether it was said.
-     */
-    private static function said(mixed $value): ?string
-    {
-        return is_string($value) && $value !== '' ? $value : null;
     }
 }

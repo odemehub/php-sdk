@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Gurmehub\Odemehub\Request;
 
+use Gurmehub\Odemehub\Enum\Currency;
+
 /**
  * A payment the customer confirms with their bank. The gateway does not
  * settle it; it hands back the address the customer has to be sent to, and
@@ -17,19 +19,15 @@ final readonly class SecurePayment extends Payment
         int $installmentNumber,
         string $ip,
         Customer $customer,
-        /** Where the customer is posted back to, with the signed outcome, once they are done at their bank. */
+        /**
+         * Where the customer's browser is posted back to once they are done
+         * at their bank, with the payment's token, the reference and a hint
+         * at how it went. An https address reachable from the internet.
+         */
         public string $callbackUrl,
         ?Card $card = null,
-        /**
-         * Where the merchant's own server is told how the payment went,
-         * signed the way every answer is. The customer's browser carries
-         * the word to `callbackUrl` only if the customer stays for it;
-         * this address hears either way, including when the customer never
-         * opened the bank's page and the payment expired.
-         */
-        public ?string $webhookUrl = null,
         ?string $savedCardToken = null,
-        ?string $currency = null,
+        ?Currency $currency = null,
         ?string $paymentProviderToken = null,
         ?string $baseAmount = null,
         ?string $channelToken = null,
@@ -60,11 +58,10 @@ final readonly class SecurePayment extends Payment
     public function toArray(string $channelToken): array
     {
         $body = parent::toArray($channelToken);
-        $body['transaction']['callback_url'] = $this->callbackUrl;
-
-        if ($this->webhookUrl !== null) {
-            $body['transaction']['webhook_url'] = $this->webhookUrl;
-        }
+        $body['transaction'] = self::said([
+            ...$body['transaction'],
+            'callback_url' => $this->callbackUrl,
+        ]);
 
         return $body;
     }

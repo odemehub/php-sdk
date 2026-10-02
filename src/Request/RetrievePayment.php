@@ -6,13 +6,13 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * How a payment went, asked for after the fact. A customer sent to their
- * bank comes back carrying the payment's number and nothing more, because
+ * bank comes back carrying the payment's token and nothing more, because
  * a browser cannot be given anything to sign with; this is the call that
  * says what became of it.
  */
-final readonly class RetrievePayment extends PaymentMessage
+final readonly class RetrievePayment extends RetrieveByToken
 {
-    public function path(): string
+    protected function endpoint(): string
     {
         return 'retrieve-payment';
     }

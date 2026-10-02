@@ -6,39 +6,45 @@ namespace Gurmehub\Odemehub\Response;
 
 /**
  * The outcome of a payment, as the gateway reports it — whether it answers
- * straight away or posts the outcome back once the customer is home from
- * their bank. The two are the same shape, so a merchant reads them the same
- * way: how it went, which payment it was, and whose.
+ * straight away, is asked after, or posts the outcome to a webhook once
+ * the customer is home from their bank. All are the same shape, so a
+ * merchant reads them the same way: how it went, which payment it was,
+ * and whose.
  *
  * A payment that was turned down is an outcome like any other and arrives
- * here; only answers that were never a payment outcome are raised as
- * exceptions.
+ * here with `result.successful` false; only answers that were never a
+ * payment outcome are raised as exceptions. A payment still under way —
+ * asked after before the customer is back — is not successful yet and
+ * carries no message.
+ *
+ * The gateway's own answers also say the payment in full under
+ * `transaction`: its state, what became of its money, what was charged
+ * and when. An outcome posted to a webhook only names the payment.
  */
 readonly class Payment
 {
+    use ReadsFields;
+
     public function __construct(
         public Result $result,
-        /** The payment's token in the gateway, which names it again for a refund. */
-        public string $transactionToken,
-        /** The channel the payment came in on. */
-        public string $channelToken,
-        /** The reference the payment is known by in the calling system. */
-        public string $channelReference,
-        /** The merchant's own key for the customer the payment was made for; null for a payer the merchant never named. */
-        public ?string $customerChannelReference,
-        /**
-         * The card the payment kept, for a payment that asked for one to be
-         * kept. It is null while nothing was kept: because the payment did
-         * not go through, because the provider handed nothing back, or
-         * because the payment never asked.
-         */
-        public ?SavedCard $savedCard = null,
+        /** Which payment it is — its token, channel and reference — and, in the gateway's own answers, where it stands and what was charged. */
+        public PaymentTransaction $transaction,
+        /** Who it was made for, as the payment froze them. */
+        public ?PaymentCustomer $customer,
         /**
          * What reached the card, for a payment the merchant's conversion
          * rules charged in another money than it was asked in; null for a
          * payment charged as it was asked.
          */
         public ?Conversion $conversion = null,
+        /**
+         * The card the payment kept, for a payment that asked for one to be
+         * kept. It is null while nothing was kept: because the payment did
+         * not go through, because the provider handed nothing back, because
+         * a 3D payment has not been finished yet, or because the payment
+         * never asked.
+         */
+        public ?SavedCard $savedCard = null,
     ) {}
 
     /**
@@ -59,19 +65,16 @@ readonly class Payment
      */
     protected static function parts(array $body): array
     {
-        $transaction = is_array($body['transaction'] ?? null) ? $body['transaction'] : [];
-        $customer = is_array($body['customer'] ?? null) ? $body['customer'] : null;
-        $savedCard = $body['saved_card'] ?? null;
-        $conversion = $body['conversion'] ?? null;
+        $customer = self::object($body['customer'] ?? null);
+        $conversion = self::object($body['conversion'] ?? null);
+        $savedCard = self::object($body['saved_card'] ?? null);
 
         return [
             'result' => Result::fromArray($body),
-            'transactionToken' => (string) ($transaction['token'] ?? ''),
-            'channelToken' => (string) ($transaction['channel_token'] ?? ''),
-            'channelReference' => (string) ($transaction['channel_reference'] ?? ''),
-            'customerChannelReference' => $customer === null ? null : (string) ($customer['channel_reference'] ?? ''),
-            'savedCard' => is_array($savedCard) ? SavedCard::fromArray($savedCard) : null,
-            'conversion' => is_array($conversion) ? Conversion::fromArray($conversion) : null,
+            'transaction' => PaymentTransaction::fromArray(self::object($body['transaction'] ?? null) ?? []),
+            'customer' => $customer === null ? null : PaymentCustomer::fromArray($customer),
+            'conversion' => $conversion === null ? null : Conversion::fromArray($conversion),
+            'savedCard' => $savedCard === null ? null : SavedCard::fromArray($savedCard),
         ];
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Gurmehub\Odemehub\Request;
 
+use Gurmehub\Odemehub\Enum\Currency;
+
 /**
  * A question about a card before anything is charged to it: who issued it,
  * what kind of card it is, and how the amount may be paid off on it. Only
@@ -19,7 +21,7 @@ final readonly class RetrieveBin extends Message
         /**
          * The first six to eight digits of the card. Six is what the banks
          * key their tables on; eight is what the gateway keeps of a card it
-         * has been paid with, so a stored card's digits can be sent as they
+         * has been paid with, so a kept card's digits can be sent as they
          * are.
          */
         public string $bin,
@@ -32,8 +34,8 @@ final readonly class RetrieveBin extends Message
          * either.
          */
         public ?string $paymentProviderToken = null,
-        /** The money the payment would be taken in; lira unless another is named. */
-        public ?string $currency = null,
+        /** The money the payment would be taken in; lira unless another is named. Instalments are only answered for lira. */
+        public ?Currency $currency = null,
     ) {}
 
     public function path(): string
@@ -42,9 +44,6 @@ final readonly class RetrieveBin extends Message
     }
 
     /**
-     * The body. What the caller left unsaid is left out altogether rather
-     * than sent empty, so the gateway fills it in itself.
-     *
      * @return array<string, mixed>
      */
     public function toArray(string $channelToken): array
@@ -53,7 +52,7 @@ final readonly class RetrieveBin extends Message
             'transaction' => self::said([
                 'payment_provider_token' => $this->paymentProviderToken,
                 'amount' => $this->amount,
-                'currency' => $this->currency,
+                'currency' => $this->currency?->value,
             ]),
             'card' => ['bin' => $this->bin],
         ];

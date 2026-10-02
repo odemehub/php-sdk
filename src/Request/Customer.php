@@ -6,25 +6,27 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * The customer a payment is made for, an order is opened for or a card is
- * kept for. The merchant names them by its own key for them on the channel
- * they came in on: the same key twice is the same customer, and what is
- * said of them here becomes the latest the gateway knows.
+ * kept for: the merchant's own key for them, where they are billed and,
+ * for goods, where those go.
+ *
+ * The reference is what a kept card is held under, together with the
+ * channel and the billing e-mail; a payment that keeps its card, a card
+ * kept on its own and a subscription all need it. A payment with a kept
+ * card has to name the same reference and e-mail the card was kept with.
+ * An order or a subscription opened without one is given a `guest-…`
+ * reference by the gateway once somebody pays.
+ *
+ * Payments and kept cards take the reference and the billing address only;
+ * orders and subscriptions take any part of the three.
  */
 final readonly class Customer
 {
     public function __construct(
         /** The key the merchant keeps this customer under in its own system. */
-        public string $channelReference,
-        public string $firstname,
-        public string $lastname,
-        public string $email,
-        public string $phone,
-        public string $address,
-        public string $district,
-        public string $province,
-        public string $country,
-        /** The company they are billed as, for a customer buying for one. */
-        public ?TaxDetails $tax = null,
+        public ?string $reference = null,
+        public ?Address $billingAddress = null,
+        /** Orders and subscriptions only. */
+        public ?Address $shippingAddress = null,
     ) {}
 
     /**
@@ -32,18 +34,10 @@ final readonly class Customer
      */
     public function toArray(): array
     {
-        $customer = [
-            'channel_reference' => $this->channelReference,
-            'firstname' => $this->firstname,
-            'lastname' => $this->lastname,
-            'email' => $this->email,
-            'phone' => $this->phone,
-            'address' => $this->address,
-            'district' => $this->district,
-            'province' => $this->province,
-            'country' => $this->country,
-        ];
-
-        return $this->tax === null ? $customer : [...$customer, 'tax' => $this->tax->toArray()];
+        return array_filter([
+            'reference' => $this->reference,
+            'billing_address' => $this->billingAddress?->toArray(),
+            'shipping_address' => $this->shippingAddress?->toArray(),
+        ], static fn (mixed $value): bool => $value !== null);
     }
 }

@@ -4,128 +4,150 @@ declare(strict_types=1);
 
 namespace Gurmehub\Odemehub\Response;
 
+use Gurmehub\Odemehub\Enum\Currency;
+use Gurmehub\Odemehub\Enum\Period;
+use Gurmehub\Odemehub\Enum\SubscriptionStatus;
+
 /**
- * A subscription as the gateway keeps it: what is subscribed to, where it
- * stands, and the period it is on. The same answer comes back whether the
- * subscription has just been opened, asked after or called off.
+ * A subscription as the gateway keeps it: what is subscribed to, how it
+ * may be shipped, what a renewal comes to, where it stands, the renewal it
+ * is on and when the next is due. The same shape comes back whether the
+ * subscription has just been opened, changed, asked after or listed, and
+ * in every `subscription.*` webhook.
  *
- * The amount is the price of the period it is on, not of the product as it
- * is priced today: a merchant that puts its price up is paid the new price
- * from the next period on, and the one being served stays as it was
- * charged.
+ * The totals are priced as the lines are today; the renewal carries what
+ * it was actually charged. A change to the lines re-prices every renewal
+ * not yet paid and leaves the paid ones as they were.
  */
 final readonly class Subscription
 {
+    use ReadsFields;
+
     /**
-     * @param  list<SubscriptionItem>  $items  What is subscribed to.
+     * @param  list<Item>  $items  What is subscribed to.
+     * @param  list<ShippingMethod>  $shippingMethods
      */
     public function __construct(
-        public Result $result,
-        /** The subscription's token in the gateway; name it here to ask after it later. */
+        /** The subscription's token in the gateway; name it here to ask after, change or cancel it. */
         public string $token,
         /** The channel the subscription was opened on. */
         public string $channelToken,
-        /** The key the subscription is known by in the calling system. */
+        /** The reference the subscription is known by in the calling system. */
         public string $channelReference,
+        public ?string $description,
+        /** The account it was opened with; null when none was named. */
+        public ?string $paymentProviderToken,
+        /** Where it stands; null for a state this client does not know. */
+        public ?SubscriptionStatus $status,
+        /** How often a renewal comes round; null for a period this client does not know. */
+        public ?Period $period,
+        /** How many renewals are paid in all; null for one that runs until cancelled. */
+        public ?int $renewalLimit,
+        /** How many renewals have been paid so far. */
+        public int $renewalsPaid,
         public array $items,
-        /** Where it stands: pending, active, past_due or cancelled. */
-        public string $status,
-        /** How often a period comes round: monthly or annually. */
-        public string $period,
-        /** What the period it is on costs, with the kurus behind a point. */
+        public array $shippingMethods,
+        /** The way the payer picked; null until they have. */
+        public ?ShippingMethod $shippingMethod,
+        public string $subtotal,
+        public string $shippingAmount,
+        public string $taxAmount,
+        /** What a renewal comes to in all, as the lines are priced today. */
         public string $amount,
-        public string $currency,
-        /** When the period it is on began, once it has been paid for. */
-        public ?string $startsAt,
-        /** When the period it is on runs out, which is when the next is charged. */
-        public ?string $endsAt,
-        /** When the period it is on was paid for, if it has been. */
-        public ?string $paidAt,
-        /** The day it was called off on, if it has been. */
-        public ?string $cancelledAt,
-        /** Where the customer pays the period it is on, while that is still owed. */
-        public ?string $checkoutUrl,
+        public ?Currency $currency,
         /** Whether it was paid for in the test environment; nothing until the first payment. */
         public ?bool $isTest,
-        /** The merchant's own key for the customer, answered when the subscription is opened. */
-        public ?string $customerChannelReference,
+        /** The renewal it is on: the latest one. */
+        public Renewal $renewal,
+        /** When the kept card is next charged; null for one that is cancelled or has not been paid yet. */
+        public ?string $nextPaymentAt,
+        /** When it was called off, if it has been. */
+        public ?string $cancelledAt,
+        public ?string $createdAt,
+        /** Where the customer pays the renewal it is on, while that is still owed and the subscription is open. */
+        public ?string $checkoutUrl,
+        /** Who the subscription is for: the key the merchant keeps them under and their addresses. */
+        public ?NamedCustomer $customer = null,
     ) {}
 
     /**
-     * Whether the subscription is being paid for: a customer who has been
-     * through the checkout and whose card has not since been turned away.
+     * Whether the subscription is being paid for: the customer has been
+     * through the checkout and the card has not since been turned away.
      */
     public function isActive(): bool
     {
-        return $this->status === 'active';
+        return $this->status === SubscriptionStatus::Active;
     }
 
     /**
-     * Whether the first period has yet to be paid for. A subscription stays
-     * here until the customer has been through the checkout.
+     * Whether the first renewal has yet to be paid for.
      */
     public function isPending(): bool
     {
-        return $this->status === 'pending';
+        return $this->status === SubscriptionStatus::Pending;
     }
 
     /**
-     * Whether a period has been left unpaid: the card was tried and turned
-     * away every time, and the customer has been asked to pay it
-     * themselves at `checkoutUrl`.
+     * Whether a renewal was left unpaid: the card was tried and turned
+     * away, and the customer has been asked to pay it themselves at
+     * `checkoutUrl`.
      */
     public function isPastDue(): bool
     {
-        return $this->status === 'past_due';
+        return $this->status === SubscriptionStatus::PastDue;
     }
 
     /**
-     * Whether it is over. A subscription that has been called off but is
-     * still serving days that were paid for is not over yet — read
+     * Whether it is over because it was called off. One called off while a
+     * paid renewal is still running stays active until that ends — read
      * `cancelledAt` for that.
      */
     public function isCancelled(): bool
     {
-        return $this->status === 'cancelled';
+        return $this->status === SubscriptionStatus::Cancelled;
     }
 
     /**
-     * @param  array<string, mixed>  $body
+     * Whether it is over because the last of its renewals has run out.
      */
-    public static function fromArray(array $body): self
+    public function isCompleted(): bool
     {
-        $subscription = is_array($body['subscription'] ?? null) ? $body['subscription'] : [];
-        $customer = is_array($body['customer'] ?? null) ? $body['customer'] : [];
+        return $this->status === SubscriptionStatus::Completed;
+    }
+
+    /**
+     * @param  array<string, mixed>  $subscription
+     */
+    public static function fromArray(array $subscription): self
+    {
+        $shippingMethod = self::object($subscription['shipping_method'] ?? null);
+        $customer = self::object($subscription['customer'] ?? null);
 
         return new self(
-            result: Result::fromArray($body),
-            token: (string) ($subscription['token'] ?? ''),
-            channelToken: (string) ($subscription['channel_token'] ?? ''),
-            channelReference: (string) ($subscription['channel_reference'] ?? ''),
-            items: array_values(array_map(
-                static fn (mixed $item): SubscriptionItem => SubscriptionItem::fromArray(is_array($item) ? $item : []),
-                is_array($subscription['items'] ?? null) ? $subscription['items'] : [],
-            )),
-            status: (string) ($subscription['status'] ?? ''),
-            period: (string) ($subscription['period'] ?? ''),
-            amount: (string) ($subscription['amount'] ?? ''),
-            currency: (string) ($subscription['currency'] ?? ''),
-            startsAt: self::said($subscription['starts_at'] ?? null),
-            endsAt: self::said($subscription['ends_at'] ?? null),
-            paidAt: self::said($subscription['paid_at'] ?? null),
+            token: self::text($subscription['token'] ?? null),
+            channelToken: self::text($subscription['channel_token'] ?? null),
+            channelReference: self::text($subscription['channel_reference'] ?? null),
+            description: self::said($subscription['description'] ?? null),
+            paymentProviderToken: self::said($subscription['payment_provider_token'] ?? null),
+            status: self::oneOf(SubscriptionStatus::class, $subscription['status'] ?? null),
+            period: self::oneOf(Period::class, $subscription['period'] ?? null),
+            renewalLimit: self::count($subscription['renewal_limit'] ?? null),
+            renewalsPaid: (int) ($subscription['renewals_paid'] ?? 0),
+            items: self::each($subscription['items'] ?? null, Item::fromArray(...)),
+            shippingMethods: self::each($subscription['shipping_methods'] ?? null, ShippingMethod::fromArray(...)),
+            shippingMethod: $shippingMethod === null ? null : ShippingMethod::fromArray($shippingMethod),
+            subtotal: self::text($subscription['subtotal'] ?? null),
+            shippingAmount: self::text($subscription['shipping_amount'] ?? null),
+            taxAmount: self::text($subscription['tax_amount'] ?? null),
+            amount: self::text($subscription['amount'] ?? null),
+            currency: self::oneOf(Currency::class, $subscription['currency'] ?? null),
+            isTest: self::flag($subscription['is_test'] ?? null),
+            renewal: Renewal::fromArray(self::object($subscription['renewal'] ?? null) ?? []),
+            nextPaymentAt: self::said($subscription['next_payment_at'] ?? null),
             cancelledAt: self::said($subscription['cancelled_at'] ?? null),
+            createdAt: self::said($subscription['created_at'] ?? null),
             checkoutUrl: self::said($subscription['checkout_url'] ?? null),
-            isTest: isset($subscription['is_test']) ? (bool) $subscription['is_test'] : null,
-            customerChannelReference: self::said($customer['channel_reference'] ?? null),
+            customer: $customer === null ? null : NamedCustomer::fromArray($customer),
         );
-    }
-
-    /**
-     * A field the gateway left empty reads as nothing rather than as an
-     * empty string, so there is one way of asking whether it was said.
-     */
-    private static function said(mixed $value): ?string
-    {
-        return is_string($value) && $value !== '' ? $value : null;
     }
 }

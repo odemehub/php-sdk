@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 require_once __DIR__.'/page.php';
 
-use Gurmehub\Odemehub\Exception\OdemehubException;
-use Gurmehub\Odemehub\Exception\ValidationException;
 use Gurmehub\Odemehub\Request\SecurePayment;
 
 /*
@@ -15,8 +13,8 @@ use Gurmehub\Odemehub\Request\SecurePayment;
 |
 | Ödeme geçidi bankanın istediği formu kendisi saklar ve kendisi sunar; bize
 | yalnızca müşteriyi göndereceğimiz adres döner. Ödeme başlamışsa müşteri
-| oraya yönlendirilir; bankasında işini bitirince sonuç, formdaki dönüş
-| adresine imzalı olarak POST edilir.
+| oraya yönlendirilir; bankasında işini bitirince tarayıcısı formdaki dönüş
+| adresine POST edilir ve sonuç orada geçide sorulur (return.php).
 |
 */
 
@@ -26,25 +24,18 @@ $message = null;
 $errors = [];
 
 if (isSubmitted()) {
-    try {
-        $payment = client()->securePayment(new SecurePayment(
-            ...postedPayment(),
-            callbackUrl: posted('callback_url'),
-        ));
+    $payment = attempt(fn () => client()->securePayment(new SecurePayment(
+        ...postedPayment(),
+        callbackUrl: posted('callback_url'),
+    )), $message, $errors);
 
-        if ($payment->result->successful) {
-            header('Location: '.$payment->redirectUrl);
+    if ($payment !== null && $payment->redirectUrl !== null) {
+        header('Location: '.$payment->redirectUrl);
 
-            exit;
-        }
-
-        $message = $payment->result->message;
-    } catch (ValidationException $exception) {
-        $message = $exception->getMessage();
-        $errors = $exception->errors;
-    } catch (OdemehubException $exception) {
-        $message = $exception->getMessage();
+        exit;
     }
+
+    $message ??= $payment?->result->message;
 }
 
 pageStart('3D Secure ödeme');

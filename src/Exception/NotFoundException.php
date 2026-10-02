@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Gurmehub\Odemehub\Exception;
+
+/**
+ * What the request named is not there (HTTP 404): no payment, order,
+ * payment link, subscription or kept card of the team's under that token,
+ * nothing under that reference on that channel, or no team at that
+ * address. Nothing was done. The message says what was looked for.
+ */
+class NotFoundException extends OdemehubException
+{
+    //
+}

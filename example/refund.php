@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 require_once __DIR__.'/page.php';
 
-use Gurmehub\Odemehub\Exception\OdemehubException;
-use Gurmehub\Odemehub\Exception\ValidationException;
 use Gurmehub\Odemehub\Request\CancelPayment;
 use Gurmehub\Odemehub\Request\RefundPayment;
 
@@ -14,46 +12,45 @@ use Gurmehub\Odemehub\Request\RefundPayment;
 | İade ve iptal
 |--------------------------------------------------------------------------
 |
-| Ödemenin geçitteki token'ı (transaction.token) yeterlidir: hangi hesaptan
-| çekildiğini, hangi sağlayıcıya gittiğini ve sağlayıcının ödemeye verdiği
-| referansı geçit zaten biliyor.
-|
-| İade tutarı verilmezse ödemenin iade edilebilir kalanının tamamı geri
-| verilir; verilirse o kalandan büyük olamaz, geçit büyüğünü reddeder.
-| İptalde tutar hiç gönderilmez, iptal her zaman ödemenin tamamıdır ve
-| yalnızca sağlayıcı ödemeyi henüz kapatmadıysa yapılabilir.
+| Ödemenin geçitteki token'ı yeterlidir; hesabı, sağlayıcıyı ve sağlayıcının
+| ödemeye verdiği referansı geçit zaten bilir. İade tutarı boş bırakılırsa
+| iade edilebilir kalanın tamamı geri verilir. İptalde tutar yoktur: iptal
+| her zaman tamamıdır ve sağlayıcı ödemeyi henüz kapatmamışken yapılır.
 |
 */
 
-$result = null;
 $message = null;
 
 /** @var array<string, list<string>> $errors */
 $errors = [];
 
-if (isSubmitted()) {
-    $transactionToken = posted('transaction_token');
-    $amount = posted('amount');
+$result = match (isSubmitted() ? posted('action') : null) {
+    'refund' => attempt(fn () => client()->refundPayment(new RefundPayment(posted('transaction_token'), postedOrNull('amount'))), $message, $errors),
+    'cancel' => attempt(fn () => client()->cancelPayment(new CancelPayment(posted('transaction_token'))), $message, $errors),
+    default => null,
+};
 
-    try {
-        $result = posted('type') === 'cancel'
-            ? client()->cancelPayment(new CancelPayment($transactionToken))
-            : client()->refundPayment(new RefundPayment($transactionToken, $amount === '' ? null : $amount));
-    } catch (ValidationException $exception) {
-        $message = $exception->getMessage();
-        $errors = $exception->errors;
-    } catch (OdemehubException $exception) {
-        $message = $exception->getMessage();
-    }
-}
-
-pageStart('İade ve iptal');
+pageStart('İade / iptal');
 
 if ($result !== null) {
-    giveBackResult($result);
+    paymentResult($result);
 } else {
     notice($message);
-    giveBackForm($errors);
+
+    echo '<form method="post"><h2>Ödeme</h2><div class="grid">';
+
+    foreach (['transaction_token' => ["İşlem token'ı (transaction.token)", 'transaction.token'], 'amount' => ['İade tutarı (boş: kalanın tamamı)', 'amount']] as $field => [$label, $parameter]) {
+        $error = $errors[$parameter][0] ?? null;
+        echo '<div'.($error === null ? '' : ' class="invalid"').'><label for="'.e($field).'">'.e($label).'</label>';
+        echo '<input id="'.e($field).'" name="'.e($field).'" value="'.e(posted($field)).'"'.($field === 'amount' ? '' : ' required').'>';
+        echo $error === null ? '' : '<p class="error">'.e($error).'</p>';
+        echo '</div>';
+    }
+
+    echo '</div><div class="actions">';
+    echo '<button class="button" type="submit" name="action" value="refund">İade et</button>';
+    echo '<button class="button" type="submit" name="action" value="cancel">İptal et</button>';
+    echo '<a class="button" href="index.php">Vazgeç</a></div></form>';
 }
 
 pageEnd();

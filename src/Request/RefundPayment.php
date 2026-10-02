@@ -6,12 +6,15 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * Money given back out of a payment the provider has already settled, whole
- * or in part.
+ * or in part. The payment is named by the token the gateway gave it, and
+ * nothing else is sent: the gateway holds the account, the provider and the
+ * reference the provider knows the payment by.
  */
-final readonly class RefundPayment extends GiveBack
+final readonly class RefundPayment extends Message
 {
     public function __construct(
-        string $transactionToken,
+        /** The payment's token in the gateway, as it answered when the payment was made. */
+        public string $token,
         /**
          * How much goes back, as digits with the kurus behind a point:
          * '35.50'. Leave it out and everything the payment has left in it
@@ -20,9 +23,7 @@ final readonly class RefundPayment extends GiveBack
          * gateway turns down anything larger.
          */
         public ?string $amount = null,
-    ) {
-        parent::__construct($transactionToken);
-    }
+    ) {}
 
     public function path(): string
     {
@@ -30,15 +31,12 @@ final readonly class RefundPayment extends GiveBack
     }
 
     /**
-     * The body. An amount that was not named is left out of the request
-     * altogether rather than sent empty.
-     *
      * @return array<string, mixed>
      */
     public function toArray(string $channelToken): array
     {
         return self::said([
-            ...parent::toArray($channelToken),
+            'transaction' => ['token' => $this->token],
             'amount' => $this->amount,
         ]);
     }

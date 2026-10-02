@@ -13,6 +13,15 @@ namespace Gurmehub\Odemehub\Request;
  */
 abstract readonly class ChannelMessage extends Message
 {
+    /**
+     * Stands for the team's own ödemehub channel, which has no token of its
+     * own and is only ever reached by payment links: the panel opens its
+     * links there, and a link that names no channel of the merchant's goes
+     * there too. Give it as the channel of a payment link message to reach
+     * those links.
+     */
+    public const ODEMEHUB_CHANNEL = 'odemehub';
+
     public function __construct(
         /** The channel this one message speaks for. Left out, the client's own is used. */
         public ?string $channelToken = null,
@@ -24,5 +33,15 @@ abstract readonly class ChannelMessage extends Message
     protected function channel(string $channelToken): string
     {
         return $this->channelToken ?? $channelToken;
+    }
+
+    /**
+     * The channel a payment link message is for: the one it names, the
+     * client's, or — for `ODEMEHUB_CHANNEL` — none, which the gateway
+     * reads as its own ödemehub channel.
+     */
+    protected function linkChannel(string $channelToken): ?string
+    {
+        return $this->channelToken === self::ODEMEHUB_CHANNEL ? null : $this->channel($channelToken);
     }
 }

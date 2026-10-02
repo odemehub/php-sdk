@@ -8,13 +8,13 @@ use Gurmehub\Odemehub\Client;
 use Gurmehub\Odemehub\Options;
 
 /**
- * The gateway this example talks to. The team is the slug in the address bar
- * of the application, and the key and the secret are the pair issued to it,
- * found under Ayarlar > Entegrasyon.
+ * The gateway this example talks to. The team is the ten-digit workspace
+ * id, and the key and the secret are the pair issued to it, all found under
+ * Ayarlar > Entegrasyon.
  *
  * The channel is named here rather than on every request: it says which shop
  * or marketplace the customer reached this merchant through, and one
- * integration speaks for one of them. Its number is on the team's Kanallar
+ * integration speaks for one of them. Its token is on the team's Kanallar
  * page. A merchant selling on more than one may still name another on a
  * single request.
  *
@@ -33,10 +33,10 @@ function client(): Client
 }
 
 /**
- * Where the gateway posts the outcome of a 3D payment back to. It is the
- * merchant's own address, reached by the customer's own browser, so it has to
- * be one that browser can open: serving this folder with
- * `php -S localhost:8080 -t example` makes the address below a real one.
+ * Where the gateway posts the customer back to after a 3D payment or a
+ * checkout. It is the merchant's own address, reached by the customer's own
+ * browser, so it has to be one that browser can open: serving this folder
+ * with `php -S localhost:8080 -t example` makes the address below a real one.
  */
 function callbackUrl(): string
 {
@@ -45,12 +45,9 @@ function callbackUrl(): string
 
 /**
  * The payment accounts this example can pay through, as the local database
- * was seeded with them, each with one of the provider's own test cards.
- *
- * Only the providers whose flow the gateway actually carries are listed: an
- * account whose provider is not implemented yet is turned down before the
- * payment is even attempted. The tokens are the ones the seeder gives
- * each account, worked out from its provider, so they survive a rebuild.
+ * was seeded with them, each with one of the provider's own test cards. The
+ * tokens are the ones the seeder gives each account, worked out from its
+ * provider, so they survive a rebuild.
  *
  * @return array<string, array<string, string>>
  */

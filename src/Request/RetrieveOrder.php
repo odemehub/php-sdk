@@ -5,29 +5,14 @@ declare(strict_types=1);
 namespace Gurmehub\Odemehub\Request;
 
 /**
- * Where an order stands: what it is for, whether it has been paid and, if
- * so, by which payment. The order is named by the token the gateway gave
- * it when it was opened, which is all a merchant holds of an order whose
- * customer never came back from the checkout. Nothing is changed by
- * asking.
+ * Where an order stands: what it is for, what it comes to, whether it has
+ * been paid and, if so, by which payment. The one call a merchant holding
+ * nothing but the order's token can make.
  */
-final readonly class RetrieveOrder extends Message
+final readonly class RetrieveOrder extends RetrieveByToken
 {
-    public function __construct(
-        /** The order's token in the gateway, as it answered when it was opened. */
-        public string $orderToken,
-    ) {}
-
-    public function path(): string
+    protected function endpoint(): string
     {
         return 'retrieve-order';
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function toArray(string $channelToken): array
-    {
-        return ['order' => ['token' => $this->orderToken]];
     }
 }

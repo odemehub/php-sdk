@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 require_once __DIR__.'/page.php';
 
-use Gurmehub\Odemehub\Exception\OdemehubException;
 use Gurmehub\Odemehub\Request\RetrievePayment;
 
 /*
@@ -14,23 +13,30 @@ use Gurmehub\Odemehub\Request\RetrievePayment;
 |
 | Müşteri bankasından (ya da geçidin ödeme sayfasından) dönünce tarayıcısı
 | buraya POST eder. Gelen alanlar sonucu değil, sonucun hazır olduğunu
-| söyler: ödemenin numarası, kendi referansınız ve güvenilmez bir ipucu.
+| söyler: ödemenin token'ı, kendi referansınız ve güvenilmez bir ipucu.
 | Bunları gönderen bizim sunucumuz değil, müşterinin tarayıcısı olduğu için
 | imzalanamazlar; sonucu geçide kendiniz sorarsınız ve o yanıt imzalıdır.
 |
 */
 
-pageStart('Ödeme sonucu');
+$message = null;
 
-$transactionToken = (string) ($_POST['transaction_token'] ?? '');
+/** @var array<string, list<string>> $errors */
+$errors = [];
+
+$transactionToken = posted('transaction_token');
+
+pageStart('Ödeme sonucu');
 
 if ($transactionToken === '') {
     notice("Dönüşte işlem token'ı yok.");
 } else {
-    try {
-        paymentResult(client()->retrievePayment(new RetrievePayment(transactionToken: $transactionToken)));
-    } catch (OdemehubException $exception) {
-        notice($exception->getMessage());
+    $payment = attempt(fn () => client()->retrievePayment(new RetrievePayment($transactionToken)), $message, $errors);
+
+    if ($payment !== null) {
+        paymentResult($payment);
+    } else {
+        notice($message);
     }
 }
 

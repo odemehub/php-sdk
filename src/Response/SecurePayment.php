@@ -9,35 +9,33 @@ namespace Gurmehub\Odemehub\Response;
  * The form the bank wants is not handed over: the gateway keeps it and
  * serves it itself, so all that comes back is the address to send the
  * customer to. Until they have been there and come back, the payment has
- * not been made.
+ * not been made. The address is good for fifteen minutes and opens once.
  */
 final readonly class SecurePayment extends Payment
 {
     public function __construct(
         Result $result,
-        string $transactionToken,
-        string $channelToken,
-        string $channelReference,
-        ?string $customerChannelReference,
-        /** Where the customer has to be sent. Always there when the payment started. */
+        PaymentTransaction $transaction,
+        ?PaymentCustomer $customer,
+        /** Where the customer has to be sent. There whenever the payment started; null when the provider refused to open the 3D session. */
         public ?string $redirectUrl = null,
-        ?SavedCard $savedCard = null,
         ?Conversion $conversion = null,
+        ?SavedCard $savedCard = null,
     ) {
-        parent::__construct($result, $transactionToken, $channelToken, $channelReference, $customerChannelReference, $savedCard, $conversion);
+        parent::__construct($result, $transaction, $customer, $conversion, $savedCard);
     }
 
     /**
      * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
      */
-    public static function fromArray(array $body): static
+    protected static function parts(array $body): array
     {
-        $result = is_array($body['result'] ?? null) ? $body['result'] : [];
-        $redirectUrl = $result['redirect_url'] ?? null;
+        $result = self::object($body['result'] ?? null) ?? [];
 
-        return new static(
-            ...static::parts($body),
-            redirectUrl: is_string($redirectUrl) && $redirectUrl !== '' ? $redirectUrl : null,
-        );
+        return [
+            ...parent::parts($body),
+            'redirectUrl' => self::said($result['redirect_url'] ?? null),
+        ];
     }
 }

@@ -20,7 +20,7 @@ final readonly class Options
     public function __construct(
         /** The address the application is served from, e.g. https://app.odemehub.com. */
         public string $baseUrl,
-        /** The team the payments are made on behalf of, as the Entegrasyon page names it. */
+        /** The team the payments are made on behalf of: the ten-digit workspace id the Entegrasyon page shows. */
         public string $team,
         /**
          * The channel every request speaks for: the shop, the marketplace or
@@ -36,10 +36,19 @@ final readonly class Options
     ) {}
 
     /**
+     * The path of a gateway endpoint for this team, as it is signed: with
+     * its leading slash and nothing in front of it.
+     */
+    public function path(string $endpoint): string
+    {
+        return '/api/'.$this->team.'/gateway/'.$endpoint;
+    }
+
+    /**
      * The full address of a gateway endpoint for this team.
      */
-    public function url(string $path): string
+    public function url(string $endpoint): string
     {
-        return rtrim($this->baseUrl, '/').'/api/'.$this->team.'/gateway/'.$path;
+        return rtrim($this->baseUrl, '/').$this->path($endpoint);
     }
 }
