@@ -10,24 +10,20 @@ use Gurmehub\Odemehub\Enum\Currency;
  * A change to an open order, named by its token in the address and again
  * in the body. Only what is sent is written: a field left out keeps what
  * there was, lines sent replace every line there was, and customer fields
- * sent are merged over the ones the order had. A paid order, or one with
- * a payment under way, cannot be changed; the gateway says so on `token`.
- *
- * The channel is written only when this message names one; the client's
- * own is not sent, so a change never moves an order between channels by
- * accident.
+ * sent are merged over the ones the order had; a customer reference sent
+ * takes the place of the one there was. A paid order, or one with a
+ * payment under way, cannot be changed; the gateway says so on `token`.
  */
 final readonly class UpdateOrder extends CheckoutMessage
 {
     /**
      * @param  list<Item>|null  $items
-     * @param  list<ShippingMethod>|null  $shippingMethods
      * @param  list<string>  $clear  Fields to set to nothing: 'description', 'cancel_url', 'payment_provider_token'.
      */
     public function __construct(
         /** The order's token in the gateway. */
         public string $token,
-        ?string $channelReference = null,
+        ?string $reference = null,
         ?string $successUrl = null,
         ?array $items = null,
         ?Customer $customer = null,
@@ -35,13 +31,11 @@ final readonly class UpdateOrder extends CheckoutMessage
         ?string $description = null,
         ?Currency $currency = null,
         ?string $paymentProviderToken = null,
-        ?bool $requiresShippingAddress = null,
-        ?array $shippingMethods = null,
+        ?bool $requiresShipping = null,
         public array $clear = [],
-        ?string $channelToken = null,
     ) {
         parent::__construct(
-            channelReference: $channelReference,
+            reference: $reference,
             successUrl: $successUrl,
             items: $items,
             customer: $customer,
@@ -49,9 +43,7 @@ final readonly class UpdateOrder extends CheckoutMessage
             description: $description,
             currency: $currency,
             paymentProviderToken: $paymentProviderToken,
-            requiresShippingAddress: $requiresShippingAddress,
-            shippingMethods: $shippingMethods,
-            channelToken: $channelToken,
+            requiresShipping: $requiresShipping,
         );
     }
 
@@ -68,11 +60,11 @@ final readonly class UpdateOrder extends CheckoutMessage
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
         return [
             'token' => $this->token,
-            ...$this->body(self::cleared($this->details($this->channelToken), $this->clear)),
+            ...$this->body(self::cleared($this->details(), $this->clear)),
         ];
     }
 }

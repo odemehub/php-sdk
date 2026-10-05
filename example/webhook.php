@@ -5,9 +5,9 @@ declare(strict_types=1);
 require_once __DIR__.'/config.php';
 
 use Gurmehub\Odemehub\Exception\SignatureException;
-use Gurmehub\Odemehub\Request\RetrieveOrder;
-use Gurmehub\Odemehub\Request\RetrievePayment;
-use Gurmehub\Odemehub\Request\RetrieveSubscription;
+use Gurmehub\Odemehub\Request\RetrieveOrders;
+use Gurmehub\Odemehub\Request\RetrievePayments;
+use Gurmehub\Odemehub\Request\RetrieveSubscriptions;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,19 +38,19 @@ try {
 
 $line = match (true) {
     $webhook->orderToken !== null => (function () use ($webhook): string {
-        $order = client()->retrieveOrder(new RetrieveOrder($webhook->orderToken))->order;
+        $order = client()->retrieveOrders(RetrieveOrders::byToken($webhook->orderToken))->orders[0];
 
-        return 'sipariş '.$order->channelReference.' -> '.($order->status->value ?? '-').', para '.($order->transaction?->paymentStatus->value ?? '-');
+        return 'sipariş '.$order->reference.' -> '.($order->status->value ?? '-').', para '.($order->transaction?->paymentStatus->value ?? '-');
     })(),
     $webhook->subscriptionToken !== null => (function () use ($webhook): string {
-        $subscription = client()->retrieveSubscription(new RetrieveSubscription($webhook->subscriptionToken))->subscription;
+        $subscription = client()->retrieveSubscriptions(RetrieveSubscriptions::byToken($webhook->subscriptionToken))->subscriptions[0];
 
-        return 'abonelik '.$subscription->channelReference.' -> '.($subscription->status->value ?? '-');
+        return 'abonelik '.$subscription->reference.' -> '.($subscription->status->value ?? '-');
     })(),
     $webhook->transactionToken !== null => (function () use ($webhook): string {
-        $transaction = client()->retrievePayment(new RetrievePayment($webhook->transactionToken))->transaction;
+        $transaction = client()->retrievePayments(RetrievePayments::byToken($webhook->transactionToken))->payments[0];
 
-        return 'ödeme '.$transaction->channelReference.' -> '.($transaction->status->value ?? '-').' / '.($transaction->paymentStatus->value ?? '-');
+        return 'ödeme '.$transaction->reference.' -> '.($transaction->status->value ?? '-').' / '.($transaction->paymentStatus->value ?? '-');
     })(),
     default => 'bilinmeyen olay',
 };

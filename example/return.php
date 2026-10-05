@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__.'/page.php';
 
-use Gurmehub\Odemehub\Request\RetrievePayment;
+use Gurmehub\Odemehub\Request\RetrievePayments;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,12 +31,12 @@ pageStart('Ödeme sonucu');
 if ($transactionToken === '') {
     notice("Dönüşte işlem token'ı yok.");
 } else {
-    $payment = attempt(fn () => client()->retrievePayment(new RetrievePayment($transactionToken)), $message, $errors);
+    $payment = attempt(fn () => client()->retrievePayments(RetrievePayments::byToken($transactionToken)), $message, $errors)?->payments[0] ?? null;
 
     if ($payment !== null) {
-        paymentResult($payment);
+        transactionResult($payment);
     } else {
-        notice($message);
+        notice($message ?? 'Bu token ile ödeme bulunamadı.');
     }
 }
 

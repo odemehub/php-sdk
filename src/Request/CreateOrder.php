@@ -7,20 +7,18 @@ namespace Gurmehub\Odemehub\Request;
 use Gurmehub\Odemehub\Enum\Currency;
 
 /**
- * An order opened to be paid once on the gateway's own checkout page. The
- * answer carries `checkout_url`; the customer is sent there, pays, and is
- * posted back to `successUrl`. The addresses set for the order's channel
- * under Webhook in the panel hear `order.paid` whether or not the customer
- * comes back.
+ * An order to be paid once on the gateway's checkout page. The customer may
+ * be left out altogether, or sent without a reference: the payer then says
+ * who they are on the checkout, and is not kept as one of the team's
+ * customers.
  */
 final readonly class CreateOrder extends CheckoutMessage
 {
     /**
      * @param  list<Item>  $items
-     * @param  list<ShippingMethod>|null  $shippingMethods
      */
     public function __construct(
-        string $channelReference,
+        string $reference,
         string $successUrl,
         array $items,
         ?Customer $customer = null,
@@ -28,12 +26,10 @@ final readonly class CreateOrder extends CheckoutMessage
         ?string $description = null,
         ?Currency $currency = null,
         ?string $paymentProviderToken = null,
-        ?bool $requiresShippingAddress = null,
-        ?array $shippingMethods = null,
-        ?string $channelToken = null,
+        ?bool $requiresShipping = null,
     ) {
         parent::__construct(
-            channelReference: $channelReference,
+            reference: $reference,
             successUrl: $successUrl,
             items: $items,
             customer: $customer,
@@ -41,9 +37,7 @@ final readonly class CreateOrder extends CheckoutMessage
             description: $description,
             currency: $currency,
             paymentProviderToken: $paymentProviderToken,
-            requiresShippingAddress: $requiresShippingAddress,
-            shippingMethods: $shippingMethods,
-            channelToken: $channelToken,
+            requiresShipping: $requiresShipping,
         );
     }
 
@@ -60,8 +54,8 @@ final readonly class CreateOrder extends CheckoutMessage
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
-        return $this->body($this->details($this->channel($channelToken)));
+        return $this->body($this->details());
     }
 }

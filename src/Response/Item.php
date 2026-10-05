@@ -14,7 +14,7 @@ final readonly class Item
 
     public function __construct(
         /** The merchant's own key for what is on the line, if it gave one. */
-        public ?string $channelReference,
+        public ?string $reference,
         public string $name,
         /** The picture the line is shown with, if any. */
         public ?string $image,
@@ -31,7 +31,7 @@ final readonly class Item
     public static function fromArray(array $item): self
     {
         return new self(
-            channelReference: self::said($item['channel_reference'] ?? null),
+            reference: self::said($item['reference'] ?? null),
             name: self::text($item['name'] ?? null),
             image: self::said($item['image'] ?? null),
             quantity: (int) ($item['quantity'] ?? 0),

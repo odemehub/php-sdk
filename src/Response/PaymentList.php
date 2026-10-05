@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace Gurmehub\Odemehub\Response;
 
 /**
- * Every payment attempt made on a channel within a span of days, oldest
- * first, so they read as the attempts were made. The days answered are
- * the ones the gateway used: the ones asked for, or the last seven when
- * none were.
+ * Payments asked after, each with its state, amount, customer and what
+ * became of its money, the ones the bank turned away included. The answer is always a list, oldest first, and an empty one when
+ * nothing matched. The days answered are the ones the gateway used, when
+ * the records were asked for by the days they were made on: the ones
+ * asked for, or the last seven when none were.
  */
 final readonly class PaymentList
 {
@@ -19,15 +20,15 @@ final readonly class PaymentList
      */
     public function __construct(
         public Result $result,
-        /** The first day listed, as `YYYY-MM-DD` in the team's timezone. */
-        public string $createdFrom,
+        /** The first day listed, as `YYYY-MM-DD` in the team's timezone; null when they were asked for by token or reference. */
+        public ?string $createdFrom,
         /** The last day listed, the same way. */
-        public string $createdTo,
+        public ?string $createdTo,
         public array $payments,
     ) {}
 
     /**
-     * The attempts that went through.
+     * The payments that went through.
      *
      * @return list<Transaction>
      */
@@ -46,8 +47,8 @@ final readonly class PaymentList
     {
         return new self(
             result: Result::fromArray($body),
-            createdFrom: self::text($body['created_from'] ?? null),
-            createdTo: self::text($body['created_to'] ?? null),
+            createdFrom: self::said($body['created_from'] ?? null),
+            createdTo: self::said($body['created_to'] ?? null),
             payments: self::each($body['payments'] ?? null, Transaction::fromArray(...)),
         );
     }

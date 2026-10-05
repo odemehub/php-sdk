@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Gurmehub\Odemehub\Response;
 
 /**
- * The answer to opening, changing or asking after one order: the order as
+ * The answer to opening or changing an order: the order as
  * it now stands and who it is for, as far as anybody has said. The
  * customer is also on the order itself, the way a listed one carries it.
  */

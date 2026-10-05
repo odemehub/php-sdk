@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Gurmehub\Odemehub\Response;
 
 /**
- * The answer to opening, changing or asking after one subscription: the
+ * The answer to opening or changing a subscription: the
  * subscription as it now stands and who it is for. The customer is also
  * on the subscription itself, the way a listed one carries it.
  */

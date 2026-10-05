@@ -24,10 +24,8 @@ final readonly class Transaction
     public function __construct(
         /** The payment's token in the gateway, which names it again to ask after or give back. */
         public string $token,
-        /** The channel the payment came in on. */
-        public string $channelToken,
         /** The reference the payment was made under in the calling system. */
-        public string $channelReference,
+        public string $reference,
         /** The attempt's state; null for a state this client does not know. */
         public ?TransactionStatus $status,
         /** What became of the money; null for a state this client does not know. */
@@ -57,6 +55,8 @@ final readonly class Transaction
         public ?string $paymentLinkToken,
         /** The token of the subscription this attempt paid a renewal of, when it did. */
         public ?string $subscriptionToken,
+        /** The card the payment kept, when it asked to keep one and went through; null otherwise. */
+        public ?SavedCard $savedCard = null,
     ) {}
 
     /**
@@ -83,11 +83,11 @@ final readonly class Transaction
     {
         $customer = self::object($transaction['customer'] ?? null);
         $conversion = self::object($transaction['conversion'] ?? null);
+        $savedCard = self::object($transaction['saved_card'] ?? null);
 
         return new self(
             token: self::text($transaction['token'] ?? null),
-            channelToken: self::text($transaction['channel_token'] ?? null),
-            channelReference: self::text($transaction['channel_reference'] ?? null),
+            reference: self::text($transaction['reference'] ?? null),
             status: self::oneOf(TransactionStatus::class, $transaction['status'] ?? null),
             paymentStatus: self::oneOf(PaymentStatus::class, $transaction['payment_status'] ?? null),
             securityType: self::oneOf(SecurityType::class, $transaction['security_type'] ?? null),
@@ -104,6 +104,7 @@ final readonly class Transaction
             orderToken: self::said(self::object($transaction['order'] ?? null)['token'] ?? null),
             paymentLinkToken: self::said(self::object($transaction['payment_link'] ?? null)['token'] ?? null),
             subscriptionToken: self::said(self::object($transaction['subscription'] ?? null)['token'] ?? null),
+            savedCard: $savedCard === null ? null : SavedCard::fromArray($savedCard),
         );
     }
 }

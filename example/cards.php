@@ -6,7 +6,7 @@ require_once __DIR__.'/page.php';
 
 use Gurmehub\Odemehub\Request\CreateSavedCard;
 use Gurmehub\Odemehub\Request\DeleteSavedCard;
-use Gurmehub\Odemehub\Request\RetrieveSavedCardsByReference;
+use Gurmehub\Odemehub\Request\RetrieveSavedCards;
 use Gurmehub\Odemehub\Request\UpdateSavedCard;
 
 /*
@@ -39,9 +39,7 @@ $outcome = match (isSubmitted() ? posted('action') : null) {
 };
 
 $cards = isSubmitted() && posted('customer_reference') !== ''
-    ? attempt(fn () => client()->retrieveSavedCardsByReference(new RetrieveSavedCardsByReference(
-        customerReference: posted('customer_reference'),
-    )), $message, $errors)
+    ? attempt(fn () => client()->retrieveSavedCards(RetrieveSavedCards::byReference(posted('customer_reference'))), $message, $errors)
     : null;
 
 pageStart('Kayıtlı kartlar');
@@ -61,7 +59,7 @@ form([
 ], $errors, 'Kartı sakla', ['payment_provider_token', 'card_security_code'], null, ['action' => 'create']);
 
 if ($cards !== null) {
-    echo '<h2>'.e($cards->customer->reference).' — kartlar ('.count($cards->savedCards).')</h2>';
+    echo '<h2>'.e(posted('customer_reference')).' — kartlar ('.count($cards->savedCards).')</h2>';
 
     if ($cards->savedCards === []) {
         echo '<p class="lead">Bu müşterinin kayıtlı kartı yok.</p>';

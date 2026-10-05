@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Gurmehub\Odemehub\Response;
 
 /**
- * One way the goods may be sent, as offered on the checkout page, or the
- * one the payer picked. The amount includes the tax.
+ * The way the payer picked to have the goods sent, from the team's own
+ * list, as it was copied onto the order or the subscription. The amount
+ * includes the tax.
  */
 final readonly class ShippingMethod
 {
@@ -14,7 +15,7 @@ final readonly class ShippingMethod
 
     public function __construct(
         /** The merchant's own key for it. */
-        public string $handle,
+        public string $reference,
         public string $title,
         /** What it costs, tax included. */
         public string $amount,
@@ -28,7 +29,7 @@ final readonly class ShippingMethod
     public static function fromArray(array $method): self
     {
         return new self(
-            handle: self::text($method['handle'] ?? null),
+            reference: self::text($method['reference'] ?? null),
             title: self::text($method['title'] ?? null),
             amount: self::text($method['amount'] ?? null),
             taxRate: self::text($method['tax_rate'] ?? null),

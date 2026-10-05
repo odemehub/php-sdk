@@ -6,8 +6,7 @@ namespace Gurmehub\Odemehub\Response;
 
 /**
  * Who a kept card belongs to: the merchant's own reference for the
- * customer. The other thing it is kept under, the channel, is on the card
- * itself.
+ * customer, which is what the card is found by again.
  */
 final readonly class SavedCardCustomer
 {

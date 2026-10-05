@@ -24,9 +24,7 @@ use Psr\Http\Message\ResponseInterface;
  * sides can tell the other really is who it says it is.
  *
  * There is one method per endpoint, named after it: `create-order` is
- * `createOrder()`, and takes a `Request\CreateOrder`. The channel the
- * merchant speaks for is named once, on the options, and put into each
- * request wherever that endpoint expects it.
+ * `createOrder()`, and takes a `Request\CreateOrder`.
  */
 final class Client
 {
@@ -45,7 +43,7 @@ final class Client
     /**
      * Start a payment the customer confirms with their bank. A successful
      * answer is not a settled payment: the customer still has to be sent
-     * to the address it comes back with, and `retrievePayment` says what
+     * to the address it comes back with, and `retrievePayments` says what
      * became of it once they are back.
      */
     public function securePayment(Request\SecurePayment $payment): Response\SecurePayment
@@ -64,8 +62,7 @@ final class Client
 
     /**
      * Give money back out of a payment the provider has settled, whole or
-     * in part. A refund that names no amount gives back everything the
-     * payment has left in it.
+     * in part.
      */
     public function refundPayment(Request\RefundPayment $refund): Response\GiveBack
     {
@@ -74,7 +71,6 @@ final class Client
 
     /**
      * Take back the whole of a payment the provider has not settled yet.
-     * Anything less than the whole of it goes back as a refund instead.
      */
     public function cancelPayment(Request\CancelPayment $cancel): Response\GiveBack
     {
@@ -82,30 +78,11 @@ final class Client
     }
 
     /**
-     * How a payment went. A customer sent to their bank comes back to the
-     * merchant with the payment's token and a hint at how it went; the
-     * hint is worth nothing on its own, and this is the call that says
-     * what really became of it.
+     * Payments as they stand — by token, every attempt under one of the
+     * merchant's own references, or the ones made between two days — each
+     * with its state, amount and what became of its money.
      */
-    public function retrievePayment(Request\RetrievePayment $payment): Response\Payment
-    {
-        return Response\Payment::fromArray($this->send($payment));
-    }
-
-    /**
-     * How the latest payment under one of the merchant's own references
-     * went, for the merchant that sent a payment and never heard back.
-     */
-    public function retrievePaymentByReference(Request\RetrievePaymentByReference $payment): Response\Payment
-    {
-        return Response\Payment::fromArray($this->send($payment));
-    }
-
-    /**
-     * Every payment attempt on a channel within a span of days, oldest
-     * first, with each one's state, amount and what became of its money.
-     */
-    public function retrievePaymentsByChannelReference(Request\RetrievePaymentsByChannelReference $payments): Response\PaymentList
+    public function retrievePayments(Request\RetrievePayments $payments): Response\PaymentList
     {
         return Response\PaymentList::fromArray($this->send($payments));
     }
@@ -131,26 +108,10 @@ final class Client
     }
 
     /**
-     * Where an order stands, by its token.
+     * Orders as they stand — by token, by the merchant's own reference, or
+     * the ones opened between two days — each with its customer.
      */
-    public function retrieveOrder(Request\RetrieveOrder $order): Response\OrderDetails
-    {
-        return Response\OrderDetails::fromArray($this->send($order));
-    }
-
-    /**
-     * Where the latest order under one of the merchant's own references
-     * stands.
-     */
-    public function retrieveOrderByReference(Request\RetrieveOrderByReference $order): Response\OrderDetails
-    {
-        return Response\OrderDetails::fromArray($this->send($order));
-    }
-
-    /**
-     * Every order opened on a channel within a span of days, oldest first.
-     */
-    public function retrieveOrdersByChannelReference(Request\RetrieveOrdersByChannelReference $orders): Response\OrderList
+    public function retrieveOrders(Request\RetrieveOrders $orders): Response\OrderList
     {
         return Response\OrderList::fromArray($this->send($orders));
     }
@@ -173,34 +134,17 @@ final class Client
     }
 
     /**
-     * A payment link as it stands, by its token, with the latest fifty
-     * payment attempts made on it and how many there have been in all.
+     * Payment links as they stand, each with the latest fifty payment
+     * attempts made on it and how many there have been in all.
      */
-    public function retrievePaymentLink(Request\RetrievePaymentLink $link): Response\PaymentLinkDetails
-    {
-        return Response\PaymentLinkDetails::fromArray($this->send($link));
-    }
-
-    /**
-     * A payment link as it stands, by the merchant's own reference for it.
-     */
-    public function retrievePaymentLinkByReference(Request\RetrievePaymentLinkByReference $link): Response\PaymentLinkDetails
-    {
-        return Response\PaymentLinkDetails::fromArray($this->send($link));
-    }
-
-    /**
-     * Every payment link opened on a channel within a span of days, oldest
-     * first.
-     */
-    public function retrievePaymentLinksByChannelReference(Request\RetrievePaymentLinksByChannelReference $links): Response\PaymentLinkList
+    public function retrievePaymentLinks(Request\RetrievePaymentLinks $links): Response\PaymentLinkList
     {
         return Response\PaymentLinkList::fromArray($this->send($links));
     }
 
     /**
-     * Change a payment link: its lines, its day, whether it takes payments.
-     * Only what is sent is written.
+     * Change a payment link: its lines, its last day, whether it takes
+     * payments. Only what is sent is written.
      */
     public function updatePaymentLink(Request\UpdatePaymentLink $link): Response\PaymentLinkDetails
     {
@@ -219,27 +163,10 @@ final class Client
     }
 
     /**
-     * Where a subscription stands, by its token.
+     * Subscriptions as they stand, each with its customer and the renewal
+     * it is on.
      */
-    public function retrieveSubscription(Request\RetrieveSubscription $subscription): Response\SubscriptionDetails
-    {
-        return Response\SubscriptionDetails::fromArray($this->send($subscription));
-    }
-
-    /**
-     * Where the latest subscription under one of the merchant's own
-     * references stands.
-     */
-    public function retrieveSubscriptionByReference(Request\RetrieveSubscriptionByReference $subscription): Response\SubscriptionDetails
-    {
-        return Response\SubscriptionDetails::fromArray($this->send($subscription));
-    }
-
-    /**
-     * Every subscription opened on a channel within a span of days, oldest
-     * first.
-     */
-    public function retrieveSubscriptionsByChannelReference(Request\RetrieveSubscriptionsByChannelReference $subscriptions): Response\SubscriptionList
+    public function retrieveSubscriptions(Request\RetrieveSubscriptions $subscriptions): Response\SubscriptionList
     {
         return Response\SubscriptionList::fromArray($this->send($subscriptions));
     }
@@ -264,24 +191,17 @@ final class Client
     }
 
     /**
-     * One kept card, by its token.
+     * Kept cards — by token, every card of a customer by their reference,
+     * or the ones kept between two days — each with its customer, the
+     * default first.
      */
-    public function retrieveSavedCard(Request\RetrieveSavedCard $savedCard): Response\SavedCardDetails
-    {
-        return Response\SavedCardDetails::fromArray($this->send($savedCard));
-    }
-
-    /**
-     * The cards kept for a customer, the default one first.
-     */
-    public function retrieveSavedCardsByReference(Request\RetrieveSavedCardsByReference $savedCards): Response\SavedCardList
+    public function retrieveSavedCards(Request\RetrieveSavedCards $savedCards): Response\SavedCardList
     {
         return Response\SavedCardList::fromArray($this->send($savedCards));
     }
 
     /**
-     * Make one of a customer's kept cards the one they pay with unless
-     * they say otherwise.
+     * Make a kept card the one its customer pays with by default.
      */
     public function updateSavedCard(Request\UpdateSavedCard $savedCard): Response\SavedCardDetails
     {
@@ -289,7 +209,7 @@ final class Client
     }
 
     /**
-     * Let go of a kept card, at the provider and here.
+     * Let go of a kept card, at the provider and with the gateway.
      */
     public function deleteSavedCard(Request\DeleteSavedCard $savedCard): Response\DeletedSavedCard
     {
@@ -340,8 +260,7 @@ final class Client
     /**
      * Sign what is being asked for, hand it to the gateway and read the
      * answer back. The body is signed exactly as it is sent, character for
-     * character, so it is written once and used for both; a GET sends no
-     * body and signs the empty string.
+     * character, so it is written once and used for both.
      *
      * @return array<string, mixed>
      */
@@ -349,22 +268,19 @@ final class Client
     {
         $method = $message->method();
         $path = $this->options->path($message->path());
-        $body = $method === 'GET' ? '' : $this->encode($message);
+        $body = $this->encode($message);
 
         $headers = [
             Options::API_KEY_HEADER => $this->options->apiKey,
             ...$this->signature->headers($method, $path, $body),
             'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
         ];
-
-        if ($method !== 'GET') {
-            $headers['Content-Type'] = 'application/json';
-        }
 
         try {
             $response = $this->http->request($method, $this->options->url($message->path()), [
                 'headers' => $headers,
-                'body' => $method === 'GET' ? null : $body,
+                'body' => $body,
                 'http_errors' => false,
             ]);
         } catch (GuzzleException $exception) {
@@ -375,12 +291,15 @@ final class Client
     }
 
     /**
-     * The body, written once.
+     * The body, written once. A body with nothing in it — asking after the
+     * latest records — is still an object, never an empty list.
      */
     private function encode(Request\Message $message): string
     {
+        $body = $message->toArray();
+
         try {
-            return json_encode($message->toArray($this->options->channelToken), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            return json_encode($body === [] ? new \stdClass : $body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         } catch (JsonException $exception) {
             throw new UnexpectedResponseException('İstek gövdesi JSON olarak yazılamadı: '.$exception->getMessage(), 0);
         }

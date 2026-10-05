@@ -25,7 +25,7 @@ final readonly class DeleteSavedCard extends Message
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
         return ['token' => $this->token];
     }

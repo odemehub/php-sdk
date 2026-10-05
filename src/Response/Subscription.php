@@ -25,15 +25,12 @@ final readonly class Subscription
 
     /**
      * @param  list<Item>  $items  What is subscribed to.
-     * @param  list<ShippingMethod>  $shippingMethods
      */
     public function __construct(
         /** The subscription's token in the gateway; name it here to ask after, change or cancel it. */
         public string $token,
-        /** The channel the subscription was opened on. */
-        public string $channelToken,
         /** The reference the subscription is known by in the calling system. */
-        public string $channelReference,
+        public string $reference,
         public ?string $description,
         /** The account it was opened with; null when none was named. */
         public ?string $paymentProviderToken,
@@ -46,7 +43,6 @@ final readonly class Subscription
         /** How many renewals have been paid so far. */
         public int $renewalsPaid,
         public array $items,
-        public array $shippingMethods,
         /** The way the payer picked; null until they have. */
         public ?ShippingMethod $shippingMethod,
         public string $subtotal,
@@ -125,8 +121,7 @@ final readonly class Subscription
 
         return new self(
             token: self::text($subscription['token'] ?? null),
-            channelToken: self::text($subscription['channel_token'] ?? null),
-            channelReference: self::text($subscription['channel_reference'] ?? null),
+            reference: self::text($subscription['reference'] ?? null),
             description: self::said($subscription['description'] ?? null),
             paymentProviderToken: self::said($subscription['payment_provider_token'] ?? null),
             status: self::oneOf(SubscriptionStatus::class, $subscription['status'] ?? null),
@@ -134,7 +129,6 @@ final readonly class Subscription
             renewalLimit: self::count($subscription['renewal_limit'] ?? null),
             renewalsPaid: (int) ($subscription['renewals_paid'] ?? 0),
             items: self::each($subscription['items'] ?? null, Item::fromArray(...)),
-            shippingMethods: self::each($subscription['shipping_methods'] ?? null, ShippingMethod::fromArray(...)),
             shippingMethod: $shippingMethod === null ? null : ShippingMethod::fromArray($shippingMethod),
             subtotal: self::text($subscription['subtotal'] ?? null),
             shippingAmount: self::text($subscription['shipping_amount'] ?? null),

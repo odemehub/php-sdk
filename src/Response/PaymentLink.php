@@ -23,10 +23,8 @@ final readonly class PaymentLink
     public function __construct(
         /** The link's token in the gateway; name it here to ask after or change it later. */
         public string $token,
-        /** The channel the link is on; null for one on the team's own ödemehub channel. */
-        public ?string $channelToken,
         /** The reference the link is known by: the merchant's, or `LINK{n}` when the gateway made it up. */
-        public string $channelReference,
+        public string $reference,
         public ?string $description,
         /** The account the link is paid through; null when none was named. */
         public ?string $paymentProviderToken,
@@ -47,7 +45,24 @@ final readonly class PaymentLink
         public ?string $createdAt,
         /** Whether its payments are taken in the test environment now: the team's, since a link has no environment of its own. */
         public bool $isTest = false,
+        /** The latest attempts made on the link, at most fifty, newest first, the refused ones included; listed links only. */
+        public array $transactions = [],
+        /** How many attempts have been made on the link in all, however many are listed; null but on a listed link. */
+        public ?int $transactionsCount = null,
     ) {}
+
+    /**
+     * The listed attempts that went through.
+     *
+     * @return list<Transaction>
+     */
+    public function successful(): array
+    {
+        return array_values(array_filter(
+            $this->transactions,
+            static fn (Transaction $transaction): bool => $transaction->isSuccessful(),
+        ));
+    }
 
     /**
      * @param  array<string, mixed>  $link
@@ -56,8 +71,7 @@ final readonly class PaymentLink
     {
         return new self(
             token: self::text($link['token'] ?? null),
-            channelToken: self::said($link['channel_token'] ?? null),
-            channelReference: self::text($link['channel_reference'] ?? null),
+            reference: self::text($link['reference'] ?? null),
             description: self::said($link['description'] ?? null),
             paymentProviderToken: self::said($link['payment_provider_token'] ?? null),
             items: self::each($link['items'] ?? null, Item::fromArray(...)),
@@ -70,6 +84,8 @@ final readonly class PaymentLink
             checkoutUrl: self::said($link['checkout_url'] ?? null),
             createdAt: self::said($link['created_at'] ?? null),
             isTest: (bool) ($link['is_test'] ?? false),
+            transactions: self::each($link['transactions'] ?? null, Transaction::fromArray(...)),
+            transactionsCount: self::count($link['transactions_count'] ?? null),
         );
     }
 }

@@ -12,27 +12,25 @@ use Gurmehub\Odemehub\Enum\Currency;
  * the address to send the customer to, and they give their card there.
  *
  * What it comes to is not sent. The gateway adds up the lines and the
- * shipping method the payer picks and answers with the amount, so the
- * total can never disagree with what it is made up of. The customer is
- * whatever is known: it is pre-filled on the checkout page and the payer
- * is asked for the rest.
+ * shipping method the payer picks from the team's own list and answers
+ * with the amount, so the total can never disagree with what it is made up
+ * of. The customer is whatever is known: it is pre-filled on the checkout
+ * page and the payer is asked for the rest.
  *
- * Opening is idempotent per channel and reference: opening again under a
- * reference that already has an open order or subscription overwrites it
- * with what is sent and answers with the one that was there, under its
- * own token. A paid order, or a subscription that has been paid, is not
- * touched, and neither is one with a payment under way — the gateway
- * says so on `channel_reference`.
+ * Opening is idempotent per reference: opening again under a reference
+ * that already has an open order or subscription overwrites it with what is
+ * sent and answers with the one that was there, under its own token. A paid
+ * order, or a subscription that has been paid, is not touched, and neither
+ * is one with a payment under way — the gateway says so on `reference`.
  */
-abstract readonly class CheckoutMessage extends ChannelMessage
+abstract readonly class CheckoutMessage extends Message
 {
     /**
      * @param  list<Item>|null  $items  What it is for; at least one line when opening. Sent on a change, they replace every line there was.
-     * @param  list<ShippingMethod>|null  $shippingMethods  How the goods may be sent, for the payer to pick from; up to twenty. Sent on a change, they replace the ones there were, and an empty list removes them all.
      */
     public function __construct(
         /** The reference it is known by in the calling system. Has to carry at least one digit. */
-        public ?string $channelReference = null,
+        public ?string $reference = null,
         /** Where the customer's browser is posted back to once it is paid, with the payment's token. An https address reachable from the internet. */
         public ?string $successUrl = null,
         public ?array $items = null,
@@ -49,13 +47,13 @@ abstract readonly class CheckoutMessage extends ChannelMessage
          * default account is used where none of them holds.
          */
         public ?string $paymentProviderToken = null,
-        /** Whether the checkout page asks the payer where the goods go. */
-        public ?bool $requiresShippingAddress = null,
-        public ?array $shippingMethods = null,
-        ?string $channelToken = null,
-    ) {
-        parent::__construct($channelToken);
-    }
+        /**
+         * Whether the checkout page asks the payer where the goods go. One
+         * who is picks a way of sending from the team's own list, of those
+         * that send there, and its price is added to the amount.
+         */
+        public ?bool $requiresShipping = null,
+    ) {}
 
     /**
      * The key the group travels under: `order` or `subscription`.
@@ -65,27 +63,21 @@ abstract readonly class CheckoutMessage extends ChannelMessage
     /**
      * The group's fields, with what the caller left unsaid left out.
      *
-     * @param  string|null  $channel  The channel to write; null to leave it as it is.
      * @return array<string, mixed>
      */
-    protected function details(?string $channel): array
+    protected function details(): array
     {
         return self::said([
-            'channel_token' => $channel,
-            'channel_reference' => $this->channelReference,
+            'reference' => $this->reference,
             'description' => $this->description,
             'payment_provider_token' => $this->paymentProviderToken,
             'currency' => $this->currency?->value,
             'success_url' => $this->successUrl,
             'cancel_url' => $this->cancelUrl,
-            'requires_shipping_address' => $this->requiresShippingAddress,
+            'requires_shipping' => $this->requiresShipping,
             'items' => $this->items === null ? null : array_map(
                 static fn (Item $item): array => $item->toArray(),
                 $this->items,
-            ),
-            'shipping_methods' => $this->shippingMethods === null ? null : array_map(
-                static fn (ShippingMethod $method): array => $method->toArray(),
-                $this->shippingMethods,
             ),
         ]);
     }

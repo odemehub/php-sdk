@@ -15,6 +15,7 @@ use Gurmehub\Odemehub\Response\Order;
 use Gurmehub\Odemehub\Response\Payment;
 use Gurmehub\Odemehub\Response\PaymentLink;
 use Gurmehub\Odemehub\Response\Subscription;
+use Gurmehub\Odemehub\Response\Transaction;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +37,7 @@ use Gurmehub\Odemehub\Response\Subscription;
 function dummy(): array
 {
     return [
-        'channel_reference' => 'SIP-'.random_int(1000, 9999),
+        'reference' => 'SIP-'.random_int(1000, 9999),
         'amount' => '100.50',
         'base_amount' => '',
         'currency' => 'TRY',
@@ -144,7 +145,7 @@ function postedItem(): Item
         name: posted('item_name'),
         unitAmount: posted('item_unit_amount'),
         quantity: (int) posted('item_quantity'),
-        taxRate: posted('item_tax_rate'),
+        taxRate: postedOrNull('item_tax_rate'),
     );
 }
 
@@ -157,7 +158,7 @@ function postedItem(): Item
 function postedPayment(): array
 {
     return [
-        'channelReference' => posted('channel_reference'),
+        'reference' => posted('reference'),
         'amount' => posted('amount'),
         'installmentNumber' => (int) posted('installment_number'),
         'ip' => posted('ip'),
@@ -371,7 +372,7 @@ function paymentForm(array $errors = [], array $extraSections = []): void
 
     form([
         'İşlem' => [
-            'channel_reference' => 'Referans (sizdeki)',
+            'reference' => 'Referans (sizdeki)',
             'amount' => 'Tutar',
             'base_amount' => 'Satılan tutar (boş: tutarla aynı)',
             'currency' => 'Para birimi',
@@ -427,8 +428,7 @@ function paymentResult(Payment $payment, array $extra = []): void
     echo '<table>';
     echo '<tr><td>result.successful</td><td>'.var_export($payment->result->successful, true).'</td></tr>';
     echo '<tr><td>transaction.token</td><td>'.e($payment->transaction->token).'</td></tr>';
-    echo '<tr><td>transaction.channel_token</td><td>'.e($payment->transaction->channelToken).'</td></tr>';
-    echo '<tr><td>transaction.channel_reference</td><td>'.e($payment->transaction->channelReference).'</td></tr>';
+    echo '<tr><td>transaction.reference</td><td>'.e($payment->transaction->reference).'</td></tr>';
     echo '<tr><td>transaction.status / payment_status</td><td>'.e(($payment->transaction->status->value ?? '-').' / '.($payment->transaction->paymentStatus->value ?? '-')).'</td></tr>';
     echo '<tr><td>transaction.amount</td><td>'.e(($payment->transaction->amount ?? '-').' '.($payment->transaction->currency->value ?? '').' ('.($payment->transaction->installmentNumber ?? 1).' taksit)').'</td></tr>';
     echo '<tr><td>transaction.is_test</td><td>'.var_export($payment->transaction->isTest, true).'</td></tr>';
@@ -454,13 +454,39 @@ function paymentResult(Payment $payment, array $extra = []): void
 }
 
 /**
+ * Sorgulanan bir ödemenin tablosu: retrieve-payments listesinin bir öğesi.
+ */
+function transactionResult(Transaction $transaction): void
+{
+    notice($transaction->errorMessage ?? ($transaction->isSuccessful() ? 'Ödeme başarılı.' : 'Ödeme: '.($transaction->status->value ?? '-')), $transaction->isSuccessful());
+
+    echo '<table>';
+    echo '<tr><td>token</td><td>'.e($transaction->token).'</td></tr>';
+    echo '<tr><td>reference</td><td>'.e($transaction->reference).'</td></tr>';
+    echo '<tr><td>status / payment_status</td><td>'.e(($transaction->status->value ?? '-').' / '.($transaction->paymentStatus->value ?? '-')).'</td></tr>';
+    echo '<tr><td>amount</td><td>'.e($transaction->amount.' '.($transaction->currency->value ?? '').' ('.$transaction->installmentNumber.' taksit)').'</td></tr>';
+    echo '<tr><td>security_type</td><td>'.e($transaction->securityType->value ?? '-').'</td></tr>';
+    echo '<tr><td>is_test</td><td>'.var_export($transaction->isTest, true).'</td></tr>';
+    echo '<tr><td>customer.reference</td><td>'.e($transaction->customer?->reference ?? '-').'</td></tr>';
+    echo '<tr><td>error_message</td><td>'.e($transaction->errorMessage ?? '-').'</td></tr>';
+    echo '<tr><td>created_at</td><td>'.e($transaction->createdAt ?? '-').'</td></tr>';
+    echo '<tr><td>order / link / subscription</td><td>'.e(($transaction->orderToken ?? '-').' / '.($transaction->paymentLinkToken ?? '-').' / '.($transaction->subscriptionToken ?? '-')).'</td></tr>';
+
+    if ($transaction->savedCard !== null) {
+        echo '<tr><td>saved_card</td><td>'.e($transaction->savedCard->token.' ('.$transaction->savedCard->firstDigits.'****'.$transaction->savedCard->lastFourDigit.')').'</td></tr>';
+    }
+
+    echo '</table><br>';
+}
+
+/**
  * Bir siparişin, aboneliğin ya da ödeme linkinin tablosu.
  */
 function checkoutResult(Order|Subscription|PaymentLink $thing): void
 {
     echo '<table>';
     echo '<tr><td>token</td><td>'.e($thing->token).'</td></tr>';
-    echo '<tr><td>channel_reference</td><td>'.e($thing->channelReference).'</td></tr>';
+    echo '<tr><td>reference</td><td>'.e($thing->reference).'</td></tr>';
 
     if (! $thing instanceof PaymentLink) {
         echo '<tr><td>status</td><td>'.e($thing->status->value ?? '-').'</td></tr>';

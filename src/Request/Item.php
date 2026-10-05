@@ -18,12 +18,18 @@ final readonly class Item
         public string $unitAmount,
         /** 1 to 9999. */
         public int $quantity,
-        /** The tax inside the price, as a percentage: '20' or '20.00'. */
-        public string $taxRate,
+        /** The tax inside the price, as a percentage: '20' or '20.00'. Left out, the line carries no tax. */
+        public ?string $taxRate = null,
         /** The merchant's own key for what is on the line, if it has one. */
-        public ?string $channelReference = null,
+        public ?string $reference = null,
         /** The https address of the picture shown beside the line at checkout. */
         public ?string $image = null,
+        /**
+         * Whether the line is also kept on the team's product list: written
+         * there under its reference, or the product with that reference
+         * brought up to the line. A line kept so has to carry a reference.
+         */
+        public ?bool $saveAsProduct = null,
     ) {}
 
     /**
@@ -32,12 +38,13 @@ final readonly class Item
     public function toArray(): array
     {
         return array_filter([
-            'channel_reference' => $this->channelReference,
+            'reference' => $this->reference,
             'name' => $this->name,
             'image' => $this->image,
             'quantity' => $this->quantity,
             'unit_amount' => $this->unitAmount,
             'tax_rate' => $this->taxRate,
+            'save_as_product' => $this->saveAsProduct,
         ], static fn (mixed $value): bool => $value !== null);
     }
 }

@@ -24,22 +24,18 @@ final readonly class Order
 
     /**
      * @param  list<Item>  $items  What the order is made up of.
-     * @param  list<ShippingMethod>  $shippingMethods  The ways the goods may be sent, for the payer to pick from.
      */
     public function __construct(
         /** The order's token in the gateway; name it here to ask after or change it later. */
         public string $token,
-        /** The channel the order was opened on. */
-        public string $channelToken,
         /** The reference the order is known by in the calling system. */
-        public string $channelReference,
+        public string $reference,
         public ?string $description,
         /** The account the order was opened with; null when none was named, in which case it is picked at pay time. */
         public ?string $paymentProviderToken,
         /** Where the order stands: `open` until it is paid, then `paid`. */
         public ?OrderStatus $status,
         public array $items,
-        public array $shippingMethods,
         /** The way the payer picked; null until they have. */
         public ?ShippingMethod $shippingMethod,
         /** What the lines come to before tax. */
@@ -81,13 +77,11 @@ final readonly class Order
 
         return new self(
             token: self::text($order['token'] ?? null),
-            channelToken: self::text($order['channel_token'] ?? null),
-            channelReference: self::text($order['channel_reference'] ?? null),
+            reference: self::text($order['reference'] ?? null),
             description: self::said($order['description'] ?? null),
             paymentProviderToken: self::said($order['payment_provider_token'] ?? null),
             status: self::oneOf(OrderStatus::class, $order['status'] ?? null),
             items: self::each($order['items'] ?? null, Item::fromArray(...)),
-            shippingMethods: self::each($order['shipping_methods'] ?? null, ShippingMethod::fromArray(...)),
             shippingMethod: $shippingMethod === null ? null : ShippingMethod::fromArray($shippingMethod),
             subtotal: self::text($order['subtotal'] ?? null),
             shippingAmount: self::text($order['shipping_amount'] ?? null),

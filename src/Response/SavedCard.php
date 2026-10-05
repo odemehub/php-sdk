@@ -31,6 +31,8 @@ final readonly class SavedCard
         /** Whether this is the card the customer pays with unless they say otherwise. */
         public bool $isDefault,
         public ?string $createdAt,
+        /** Who the card is kept for; listed cards only, the other answers carry it beside the card. */
+        public ?SavedCardCustomer $customer = null,
     ) {}
 
     /**
@@ -38,6 +40,8 @@ final readonly class SavedCard
      */
     public static function fromArray(array $card): self
     {
+        $customer = self::object($card['customer'] ?? null);
+
         return new self(
             token: self::text($card['token'] ?? null),
             paymentProviderToken: self::text($card['payment_provider_token'] ?? null),
@@ -49,6 +53,7 @@ final readonly class SavedCard
             expiryYear: self::text($card['expiry_year'] ?? null),
             isDefault: (bool) ($card['is_default'] ?? false),
             createdAt: self::said($card['created_at'] ?? null),
+            customer: $customer === null ? null : SavedCardCustomer::fromArray($customer),
         );
     }
 }

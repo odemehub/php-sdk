@@ -15,7 +15,7 @@ use Gurmehub\Odemehub\Enum\Currency;
  * through the account the card is kept at, so no account is named either;
  * the gateway turns down a payment that names both.
  */
-abstract readonly class Payment extends ChannelMessage
+abstract readonly class Payment extends Message
 {
     public function __construct(
         /**
@@ -24,7 +24,7 @@ abstract readonly class Payment extends ChannelMessage
          * the order number the bank is sent, so the payment can be found in
          * the bank's panel by it.
          */
-        public string $channelReference,
+        public string $reference,
         /**
          * The amount, as digits with the kurus behind a point: '100', '100.1'
          * or '100.10'. A comma is refused. It is a string so that it is
@@ -36,7 +36,11 @@ abstract readonly class Payment extends ChannelMessage
         public int $installmentNumber,
         /** The address the customer is paying from, as the merchant sees it. */
         public string $ip,
-        /** Who is paying: the reference, if any, and the whole billing address. */
+        /**
+         * Who is paying: the whole billing address and, when the merchant
+         * keeps them, their reference. A payment that keeps its card, or is
+         * made with a kept one, has to name the customer the card is theirs.
+         */
         public Customer $customer,
         /** The card typed in. Left out only when a kept card is named instead. */
         public ?Card $card = null,
@@ -57,20 +61,16 @@ abstract readonly class Payment extends ChannelMessage
          * which is most payments.
          */
         public ?string $baseAmount = null,
-        ?string $channelToken = null,
-    ) {
-        parent::__construct($channelToken);
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
         return self::said([
             'transaction' => self::said([
-                'channel_token' => $this->channel($channelToken),
-                'channel_reference' => $this->channelReference,
+                'reference' => $this->reference,
                 'payment_provider_token' => $this->paymentProviderToken,
                 'amount' => $this->amount,
                 'base_amount' => $this->baseAmount,

@@ -6,12 +6,8 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * Something handed to the gateway. Everything sent there is plain JSON,
- * signed as a whole by the client, so what is common to all of them is the
- * endpoint it goes to, the method it goes with and the body it is sent as.
- *
- * The body is built with the client's channel handed in, because a message
- * that speaks for a channel puts it where its own endpoint expects it; one
- * that does not, such as a refund, simply never reads it.
+ * posted and signed as a whole by the client, so what is common to all of
+ * them is the endpoint it goes to and the body it is sent as.
  */
 abstract readonly class Message
 {
@@ -22,17 +18,14 @@ abstract readonly class Message
     abstract public function path(): string;
 
     /**
-     * The request body, in the snake_case the gateway speaks. Empty for a
-     * message sent with GET, which carries nothing but its address.
+     * The request body, in the snake_case the gateway speaks.
      *
-     * @param  string  $channelToken  The client's channel, by its token, for the messages that speak for one.
      * @return array<string, mixed>
      */
-    abstract public function toArray(string $channelToken): array;
+    abstract public function toArray(): array;
 
     /**
-     * The HTTP method this goes with. Everything is posted, except asking
-     * after one record by its token.
+     * The HTTP method this goes with: every endpoint is posted to.
      */
     public function method(): string
     {

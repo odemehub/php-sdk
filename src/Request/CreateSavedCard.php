@@ -6,27 +6,20 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * A card kept for a customer without a payment being made on it. The
- * provider is told who the card belongs to, so the token it hands back is
- * held under that customer and the card can be charged again later. It is
- * kept under the channel, the customer's reference and the billing e-mail
- * together; a payment with the card has to name the same three.
- *
- * Providers without a card store of their own keep a card by charging a
- * small amount and giving it straight back; those need the security code,
- * and the ones with a real card store do not. It is never stored.
+ * customer is given by reference with the whole billing address: once the
+ * provider takes the card, the team's customer under that reference is
+ * written from what was sent and the card is kept for them.
  */
-final readonly class CreateSavedCard extends ChannelMessage
+final readonly class CreateSavedCard extends Message
 {
     public function __construct(
-        /** Who the card belongs to: the reference and the whole billing address, both required. */
+        /** Who the card is kept for: the reference and the whole billing address. */
         public Customer $customer,
+        /** The card. Its security code is only needed by the providers that keep a card on the back of a small charge they take back. */
         public Card $card,
-        /** The payment account to keep the card at; it has to keep cards. Left out, the team's default account is used. */
+        /** The account the card is kept at; left out, the team's default account. It has to keep cards. */
         public ?string $paymentProviderToken = null,
-        ?string $channelToken = null,
-    ) {
-        parent::__construct($channelToken);
-    }
+    ) {}
 
     public function path(): string
     {
@@ -36,18 +29,15 @@ final readonly class CreateSavedCard extends ChannelMessage
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
         $card = $this->card->toArray();
         unset($card['should_save']);
 
-        return [
-            'saved_card' => self::said([
-                'channel_token' => $this->channel($channelToken),
-                'payment_provider_token' => $this->paymentProviderToken,
-            ]),
+        return self::said([
+            'saved_card' => $this->paymentProviderToken === null ? null : ['payment_provider_token' => $this->paymentProviderToken],
             'customer' => $this->customer->toArray(),
             'card' => $card,
-        ];
+        ]);
     }
 }

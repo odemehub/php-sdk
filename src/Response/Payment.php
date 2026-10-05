@@ -27,7 +27,7 @@ readonly class Payment
 
     public function __construct(
         public Result $result,
-        /** Which payment it is — its token, channel and reference — and, in the gateway's own answers, where it stands and what was charged. */
+        /** Which payment it is — its token and reference — and, in the gateway's own answers, where it stands and what was charged. */
         public PaymentTransaction $transaction,
         /** Who it was made for, as the payment froze them. */
         public ?PaymentCustomer $customer,

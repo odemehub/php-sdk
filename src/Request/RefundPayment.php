@@ -33,7 +33,7 @@ final readonly class RefundPayment extends Message
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
         return self::said([
             'transaction' => ['token' => $this->token],

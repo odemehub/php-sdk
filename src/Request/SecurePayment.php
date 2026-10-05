@@ -7,33 +7,28 @@ namespace Gurmehub\Odemehub\Request;
 use Gurmehub\Odemehub\Enum\Currency;
 
 /**
- * A payment the customer confirms with their bank. The gateway does not
- * settle it; it hands back the address the customer has to be sent to, and
- * posts them back to the address named here once they are done.
+ * A payment the customer confirms with their bank. The answer carries the
+ * address to send the customer to; the outcome reaches the callback address
+ * once they come back.
  */
 final readonly class SecurePayment extends Payment
 {
     public function __construct(
-        string $channelReference,
+        string $reference,
         string $amount,
         int $installmentNumber,
         string $ip,
         Customer $customer,
-        /**
-         * Where the customer's browser is posted back to once they are done
-         * at their bank, with the payment's token, the reference and a hint
-         * at how it went. An https address reachable from the internet.
-         */
+        /** Where the customer's browser is posted back to once the bank has answered. An https address reachable from the internet. */
         public string $callbackUrl,
         ?Card $card = null,
         ?string $savedCardToken = null,
         ?Currency $currency = null,
         ?string $paymentProviderToken = null,
         ?string $baseAmount = null,
-        ?string $channelToken = null,
     ) {
         parent::__construct(
-            channelReference: $channelReference,
+            reference: $reference,
             amount: $amount,
             installmentNumber: $installmentNumber,
             ip: $ip,
@@ -43,7 +38,6 @@ final readonly class SecurePayment extends Payment
             currency: $currency,
             paymentProviderToken: $paymentProviderToken,
             baseAmount: $baseAmount,
-            channelToken: $channelToken,
         );
     }
 
@@ -55,9 +49,9 @@ final readonly class SecurePayment extends Payment
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
-        $body = parent::toArray($channelToken);
+        $body = parent::toArray();
         $body['transaction'] = self::said([
             ...$body['transaction'],
             'callback_url' => $this->callbackUrl,

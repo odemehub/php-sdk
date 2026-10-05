@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Gurmehub\Odemehub\Response;
 
 /**
- * The answer to keeping a card, asking after one or making one the
- * default: the card as it now stands and whose it is. A card the provider
+ * The answer to keeping a card or making one the default: the card as it now stands and whose it is. A card the provider
  * would not keep comes back as nothing, with the result saying why.
  */
 final readonly class SavedCardDetails

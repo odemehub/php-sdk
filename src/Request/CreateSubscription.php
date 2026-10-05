@@ -8,45 +8,33 @@ use Gurmehub\Odemehub\Enum\Currency;
 use Gurmehub\Odemehub\Enum\Period;
 
 /**
- * A subscription opened for a customer, its first renewal to be paid on
- * the gateway's own checkout page and the rest taken from the card kept
- * then. The answer carries `checkout_url`; the customer is sent there,
- * pays with a card the gateway keeps as their default, and is posted back
- * to `successUrl`. The addresses set for its channel under Webhook in the
- * panel hear every change of state after that: each renewal paid, one that
- * could not be, a cancellation, the end.
- *
- * The customer needs a reference, because that is what the card the
- * renewals are taken from is kept under. The account, named or default,
- * has to keep cards and take 3D payments, and the plan has to cover saved
- * cards.
+ * A subscription: its first renewal paid on the gateway's checkout page,
+ * and every renewal after it taken from the card kept then. It is always
+ * for a customer the merchant names by reference — the card is kept for
+ * that customer — and paid through an account that keeps cards.
  */
 final readonly class CreateSubscription extends CheckoutMessage
 {
     /**
      * @param  list<Item>  $items
-     * @param  list<ShippingMethod>|null  $shippingMethods
      */
     public function __construct(
-        string $channelReference,
-        /** How often a renewal comes round. */
+        string $reference,
         public Period $period,
         string $successUrl,
         array $items,
-        /** Who is subscribing; the reference is required. */
+        /** Who it is for; the reference has to be there. */
         Customer $customer,
-        /** How many renewals are paid in all, 1 to 1000, after which it is completed. Left out, it runs until cancelled. */
+        /** How many renewals are paid in all; left out, it runs until it is called off. */
         public ?int $renewalLimit = null,
         ?string $cancelUrl = null,
         ?string $description = null,
         ?Currency $currency = null,
         ?string $paymentProviderToken = null,
-        ?bool $requiresShippingAddress = null,
-        ?array $shippingMethods = null,
-        ?string $channelToken = null,
+        ?bool $requiresShipping = null,
     ) {
         parent::__construct(
-            channelReference: $channelReference,
+            reference: $reference,
             successUrl: $successUrl,
             items: $items,
             customer: $customer,
@@ -54,9 +42,7 @@ final readonly class CreateSubscription extends CheckoutMessage
             description: $description,
             currency: $currency,
             paymentProviderToken: $paymentProviderToken,
-            requiresShippingAddress: $requiresShippingAddress,
-            shippingMethods: $shippingMethods,
-            channelToken: $channelToken,
+            requiresShipping: $requiresShipping,
         );
     }
 
@@ -73,10 +59,10 @@ final readonly class CreateSubscription extends CheckoutMessage
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
         return $this->body(self::said([
-            ...$this->details($this->channel($channelToken)),
+            ...$this->details(),
             'period' => $this->period->value,
             'renewal_limit' => $this->renewalLimit,
         ]));

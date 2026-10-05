@@ -9,14 +9,14 @@ use Gurmehub\Odemehub\Enum\WebhookEvent;
 /**
  * A word the gateway sent about something of the merchant's: an order
  * paid, a link paid, a subscription's state changed, a payment finished,
- * money given back. It goes to the addresses set for the thing's channel
+ * money given back. It goes to the addresses the team set for the event
  * under Webhook in the panel, as plain JSON signed the way every answer
  * is; `Client::webhook()` checks the signature before reading it.
  *
  * It is a notification, never the answer. It names the thing by token —
  * and the payment beside it when money moved — and nothing else; ask the
- * gateway what became of it (`retrieveOrder`, `retrievePaymentLink`,
- * `retrieveSubscription`, `retrievePayment`) and act on that, checking it
+ * gateway what became of it (`retrieveOrders`, `retrievePaymentLinks`,
+ * `retrieveSubscriptions`, `retrievePayments`, by its token) and act on that, checking it
  * against your own record. A word may arrive more than once; the id tells
  * the copies apart.
  */

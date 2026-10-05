@@ -11,12 +11,7 @@ use Gurmehub\Odemehub\Options;
  * The gateway this example talks to. The team is the ten-digit workspace
  * id, and the key and the secret are the pair issued to it, all found under
  * Ayarlar > Entegrasyon.
- *
- * The channel is named here rather than on every request: it says which shop
- * or marketplace the customer reached this merchant through, and one
- * integration speaks for one of them. Its token is on the team's Kanallar
- * page. A merchant selling on more than one may still name another on a
- * single request.
+
  *
  * The values below are the ones the local database was seeded with. Every one
  * of them can be overridden from the environment without editing this file.
@@ -26,7 +21,6 @@ function client(): Client
     return new Client(new Options(
         baseUrl: getenv('ODEMEHUB_BASE_URL') ?: 'http://localhost:8000',
         team: getenv('ODEMEHUB_TEAM') ?: '1000000001',
-        channelToken: getenv('ODEMEHUB_CHANNEL_TOKEN') ?: '00000000-0000-4000-8000-000000000001',
         apiKey: getenv('ODEMEHUB_API_KEY') ?: 'key_seeded_development_credential_do_not_use',
         apiSecret: getenv('ODEMEHUB_API_SECRET') ?: 'secret_seeded_development_credential_do_not_use',
     ));

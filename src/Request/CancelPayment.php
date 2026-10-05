@@ -25,7 +25,7 @@ final readonly class CancelPayment extends Message
     /**
      * @return array<string, mixed>
      */
-    public function toArray(string $channelToken): array
+    public function toArray(): array
     {
         return ['transaction' => ['token' => $this->token]];
     }
