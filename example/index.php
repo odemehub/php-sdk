@@ -22,7 +22,7 @@ require_once __DIR__.'/page.php';
 
 pageStart('ödemehub örneği');
 
-echo '<p class="lead">Ödeme geçidine gerçek bir istek atılır. Kimlik bilgileri ve kanal config.php dosyasındadır.</p>';
+echo '<p class="lead">Ödeme geçidine gerçek bir istek atılır. Kimlik bilgileri config.php dosyasındadır.</p>';
 
 echo '<h2>Ödeme</h2><div class="actions">';
 echo '<a class="button" href="regular.php">Doğrudan ödeme</a>';

@@ -15,10 +15,9 @@ use Gurmehub\Odemehub\Request\UpdateSavedCard;
 |--------------------------------------------------------------------------
 |
 | Bir kart ödeme yapılmadan saklanır, müşterinin kartları listelenir, biri
-| varsayılan yapılır ya da silinir. Kart iki şeyin altında durur: kanal
-| (istemcide) ve müşteri referansı. Liste de bu ikisiyle sorulur. Liste
-| kartı çekebilecek bir şey döndürmez; kart yalnızca ilk ve son haneleriyle
-| anılır.
+| varsayılan yapılır ya da silinir. Kart müşteri referansının altında
+| durur; liste de bu referansla sorulur. Liste kartı çekebilecek bir şey
+| döndürmez; kart yalnızca ilk ve son haneleriyle anılır.
 |
 */
 

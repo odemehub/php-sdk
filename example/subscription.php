@@ -17,7 +17,7 @@ use Gurmehub\Odemehub\Request\UpdateSubscription;
 |
 | Abonelik açılır; ilk yenileme geçidin ödeme sayfasında ödenir ve kart orada
 | saklanır. Sonraki yenilemeler o karttan çekilir ve her biri panelde
-| kanala tanımlanan webhook adresine bildirilir. Müşteri referansı zorunludur: kart onun altında
+| tanımlanan webhook adresine bildirilir. Müşteri referansı zorunludur: kart onun altında
 | saklanır. İptal, update-subscription ile `status: cancelled` göndermektir;
 | ödenmiş dönem sonuna kadar sürer, sonrasında çekim yapılmaz.
 |

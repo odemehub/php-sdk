@@ -506,13 +506,15 @@ function checkoutResult(Order|Subscription|PaymentLink $thing): void
         echo '<tr><td>is_active</td><td>'.var_export($thing->isActive, true).'</td></tr>';
         echo '<tr><td>expires_at</td><td>'.e($thing->expiresAt ?? '-').'</td></tr>';
         echo '<tr><td>is_test</td><td>'.var_export($thing->isTest, true).'</td></tr>';
+        echo '<tr><td>amount_type</td><td>'.e($thing->amountType->value ?? '-').'</td></tr>';
     } else {
         echo '<tr><td>customer.reference</td><td>'.e($thing->customer?->reference ?? '-').'</td></tr>';
+        echo '<tr><td>discount</td><td>'.e($thing->discount === null ? '-' : $thing->discount->code.' -'.$thing->discount->amount).'</td></tr>';
     }
 
-    echo '<tr><td>subtotal</td><td>'.e($thing->subtotal).'</td></tr>';
-    echo '<tr><td>tax_amount</td><td>'.e($thing->taxAmount).'</td></tr>';
-    echo '<tr><td>amount</td><td>'.e($thing->amount.' '.($thing->currency->value ?? '')).'</td></tr>';
+    echo '<tr><td>subtotal</td><td>'.e($thing->subtotal ?? '-').'</td></tr>';
+    echo '<tr><td>tax_amount</td><td>'.e($thing->taxAmount ?? '-').'</td></tr>';
+    echo '<tr><td>amount</td><td>'.e($thing->amount === null ? '-' : $thing->amount.' '.($thing->currency->value ?? '')).'</td></tr>';
     echo '<tr><td>checkout_url</td><td>'.($thing->checkoutUrl === null ? '-' : '<a href="'.e($thing->checkoutUrl).'">'.e($thing->checkoutUrl).'</a>').'</td></tr>';
 
     if ($thing instanceof Order && $thing->transaction !== null) {

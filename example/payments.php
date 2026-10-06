@@ -11,8 +11,8 @@ use Gurmehub\Odemehub\Request\RetrievePayments;
 | Ödemeler
 |--------------------------------------------------------------------------
 |
-| İki soru: bir referansın son ödemesi nasıl gitti, ve kanalda bir tarih
-| aralığında hangi denemeler yapıldı. İlki yanıtı alınamayan bir ödemenin
+| İki soru: bir referansın son ödemesi nasıl gitti, ve çalışma alanında bir
+| tarih aralığında hangi denemeler yapıldı. İlki yanıtı alınamayan bir ödemenin
 | akıbetini öğrenmek içindir; ikincisi her denemenin durumunu, tutarını ve
 | paranın ne olduğunu listeler. Hiçbir şey değişmez.
 |

@@ -57,6 +57,8 @@ final readonly class Transaction
         public ?string $subscriptionToken,
         /** The card the payment kept, when it asked to keep one and went through; null otherwise. */
         public ?SavedCard $savedCard = null,
+        /** The token of the payer's payment at the link, when the attempt was at one; ask after it with `retrieveLinkPayments`. */
+        public ?string $linkPaymentToken = null,
     ) {}
 
     /**
@@ -105,6 +107,7 @@ final readonly class Transaction
             paymentLinkToken: self::said(self::object($transaction['payment_link'] ?? null)['token'] ?? null),
             subscriptionToken: self::said(self::object($transaction['subscription'] ?? null)['token'] ?? null),
             savedCard: $savedCard === null ? null : SavedCard::fromArray($savedCard),
+            linkPaymentToken: self::said(self::object($transaction['link_payment'] ?? null)['token'] ?? null),
         );
     }
 }

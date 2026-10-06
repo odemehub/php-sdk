@@ -16,10 +16,13 @@ use Gurmehub\Odemehub\Request\UpdatePaymentLink;
 |
 | Link açılır ve geçit, kim açarsa onun ödeyebileceği sayfanın adresini
 | (checkout_url) döndürür. Müşteri yoktur; ödeyen sayfada kendini söyler.
-| Link bitmez: aynı referansla ikinci kez açmak linki günceller. Kimlerin
-| ödediği retrieve-payment-links ile (son 50 deneme ve transactions_count)
-| görülür; kapatmak update-payment-link ile `is_active: false`
-| göndermektir. checkout_url yalnızca link ödenebilirken doludur.
+| Her create-payment-link çağrısı, referans daha önce gönderilmiş olsa da
+| yeni bir link ve yeni bir token açar; linki sonradan token'ıyla
+| güncellersiniz. Linkteki denemeler retrieve-payment-links ile (son 50
+| deneme ve transactions_count), kimlerin ne ödediği — tutar, kalemler,
+| ödeyenin fatura adresi — retrieve-link-payments ile görülür. Kapatmak
+| update-payment-link ile `is_active: false` göndermektir. checkout_url
+| yalnızca link ödenebilirken doludur.
 |
 */
 

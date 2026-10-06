@@ -12,12 +12,15 @@ use Gurmehub\Odemehub\Enum\SubscriptionStatus;
  * A subscription as the gateway keeps it: what is subscribed to, how it
  * may be shipped, what a renewal comes to, where it stands, the renewal it
  * is on and when the next is due. The same shape comes back whether the
- * subscription has just been opened, changed, asked after or listed, and
- * in every `subscription.*` webhook.
+ * subscription has just been opened, changed, asked after or listed; a
+ * `subscription.*` webhook only names it by token.
  *
  * The totals are priced as the lines are today; the renewal carries what
  * it was actually charged. A change to the lines re-prices every renewal
- * not yet paid and leaves the paid ones as they were.
+ * not yet paid and leaves the paid ones as they were. A coupon is only
+ * ever put on the first payment: `discount` names it, the totals here
+ * stay as the lines are, and what the first renewal was charged is on
+ * `renewal->amount`.
  */
 final readonly class Subscription
 {
@@ -64,6 +67,8 @@ final readonly class Subscription
         public ?string $checkoutUrl,
         /** Who the subscription is for: the key the merchant keeps them under and their addresses. */
         public ?NamedCustomer $customer = null,
+        /** The coupon the payer put on the first payment; null when none was. */
+        public ?Discount $discount = null,
     ) {}
 
     /**
@@ -118,6 +123,7 @@ final readonly class Subscription
     {
         $shippingMethod = self::object($subscription['shipping_method'] ?? null);
         $customer = self::object($subscription['customer'] ?? null);
+        $discount = self::object($subscription['discount'] ?? null);
 
         return new self(
             token: self::text($subscription['token'] ?? null),
@@ -142,6 +148,7 @@ final readonly class Subscription
             createdAt: self::said($subscription['created_at'] ?? null),
             checkoutUrl: self::said($subscription['checkout_url'] ?? null),
             customer: $customer === null ? null : NamedCustomer::fromArray($customer),
+            discount: $discount === null ? null : Discount::fromArray($discount),
         );
     }
 }

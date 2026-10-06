@@ -98,8 +98,9 @@ final class Client
     }
 
     /**
-     * Open an order to be paid on the gateway's own page, or overwrite the
-     * open one already under the same reference. Nothing is charged here;
+     * Open an order to be paid on the gateway's own page. Every call opens
+     * a new order under a new token, even under a reference sent before;
+     * keep the token to change it or ask after it. Nothing is charged here;
      * the customer is sent to the address that comes back and pays there.
      */
     public function createOrder(Request\CreateOrder $order): Response\OrderDetails
@@ -125,8 +126,9 @@ final class Client
     }
 
     /**
-     * Open a payment link, or overwrite the one already under the same
-     * reference. The address that comes back is the link itself.
+     * Open a payment link. Every call opens a new link under a new token,
+     * even under a reference sent before; keep the token to change it or
+     * ask after it. The address that comes back is the link itself.
      */
     public function createPaymentLink(Request\CreatePaymentLink $link): Response\PaymentLinkDetails
     {
@@ -143,8 +145,9 @@ final class Client
     }
 
     /**
-     * Change a payment link: its lines, its last day, whether it takes
-     * payments. Only what is sent is written.
+     * Change a payment link: its lines or the amount the payer picks, its
+     * money, its last day, whether it takes payments. Only what is sent is
+     * written.
      */
     public function updatePaymentLink(Request\UpdatePaymentLink $link): Response\PaymentLinkDetails
     {
@@ -152,10 +155,21 @@ final class Client
     }
 
     /**
+     * Payments made at the team's links as they stand — by token, by their
+     * `LINKPAY` number, or the ones made between two days — each with what
+     * was paid, the link it was paid at, the payer as they billed
+     * themselves and, once it is paid, the attempt that paid it.
+     */
+    public function retrieveLinkPayments(Request\RetrieveLinkPayments $linkPayments): Response\LinkPaymentList
+    {
+        return Response\LinkPaymentList::fromArray($this->send($linkPayments));
+    }
+
+    /**
      * Open a subscription, its first renewal to be paid on the gateway's
-     * own page and the rest taken from the card kept then; or overwrite
-     * the one already under the same reference while nothing has been
-     * paid on it.
+     * own page and the rest taken from the card kept then. Every call opens
+     * a new subscription under a new token, even under a reference sent
+     * before; keep the token to change, cancel or ask after it.
      */
     public function createSubscription(Request\CreateSubscription $subscription): Response\SubscriptionDetails
     {

@@ -17,11 +17,11 @@ use Gurmehub\Odemehub\Enum\Currency;
  * of. The customer is whatever is known: it is pre-filled on the checkout
  * page and the payer is asked for the rest.
  *
- * Opening is idempotent per reference: opening again under a reference
- * that already has an open order or subscription overwrites it with what is
- * sent and answers with the one that was there, under its own token. A paid
- * order, or a subscription that has been paid, is not touched, and neither
- * is one with a payment under way — the gateway says so on `reference`.
+ * Every opening opens a new one under a token of its own, even under a
+ * reference sent before: the reference is the merchant's own label and
+ * need not be unique, so a payer who turned back at the bank can be sent
+ * to pay again. Nothing already open is rewritten; keep the token that
+ * comes back and change that one by it.
  */
 abstract readonly class CheckoutMessage extends Message
 {

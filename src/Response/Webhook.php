@@ -15,9 +15,9 @@ use Gurmehub\Odemehub\Enum\WebhookEvent;
  *
  * It is a notification, never the answer. It names the thing by token —
  * and the payment beside it when money moved — and nothing else; ask the
- * gateway what became of it (`retrieveOrders`, `retrievePaymentLinks`,
- * `retrieveSubscriptions`, `retrievePayments`, by its token) and act on that, checking it
- * against your own record. A word may arrive more than once; the id tells
+ * gateway what became of it (`retrieveOrders`, `retrieveLinkPayments`,
+ * `retrieveSubscriptions`, `retrievePayments`, by its token) and act on
+ * that, checking it against your own record. A word may arrive more than once; the id tells
  * the copies apart.
  */
 final readonly class Webhook
@@ -38,6 +38,8 @@ final readonly class Webhook
         public ?string $subscriptionToken,
         /** The payment: for the `transaction.*` events, and beside the thing wherever money moved at it. */
         public ?string $transactionToken,
+        /** The payer's payment at the link, beside the link on every `payment_link.*` event. */
+        public ?string $linkPaymentToken = null,
     ) {}
 
     /**
@@ -61,6 +63,7 @@ final readonly class Webhook
             paymentLinkToken: self::said(self::object($body['payment_link'] ?? null)['token'] ?? null),
             subscriptionToken: self::said(self::object($body['subscription'] ?? null)['token'] ?? null),
             transactionToken: self::said(self::object($body['transaction'] ?? null)['token'] ?? null),
+            linkPaymentToken: self::said(self::object($body['link_payment'] ?? null)['token'] ?? null),
         );
     }
 }

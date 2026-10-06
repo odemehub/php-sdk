@@ -30,7 +30,9 @@ $client = new Client(new Options(
 
 Gizli anahtar hiçbir zaman tel üzerinden gitmez; yalnızca imza üretmekte ve doğrulamakta kullanılır. Anahtarları kodun içine yazmayın.
 
-Geçit hiçbir yerde veritabanı numarası kullanmaz: ödeme hesabı, işlem, sipariş, abonelik, link ve kayıtlı kart her zaman UUID token'ıyla anılır.
+Geçit hiçbir yerde veritabanı numarası kullanmaz: ödeme hesabı, işlem, sipariş, abonelik, link, link ödemesi ve kayıtlı kart her zaman UUID token'ıyla anılır.
+
+`reference` sizin etiketinizdir, tekil olması gerekmez. `create-*` çağrıları (`createOrder`, `createSubscription`, `createPaymentLink`) her seferinde yeni bir kayıt ve yeni bir token açar; aynı referansı ikinci kez göndermek eski kaydı değiştirmez, hata da döndürmez. Böylece 3D'de vazgeçen ödeyeni aynı referansla yeniden ödemeye gönderebilirsiniz. Her create yanıtındaki token'ı saklayın: kaydı sonradan bu token'la güncellersiniz ve sorgularsınız. Referansla sorgu (`byReference()`) o referanstaki bütün kayıtları döner.
 
 ## İmza
 
@@ -124,7 +126,7 @@ $payment?->paymentStatus;   // Enum\PaymentStatus: paranın akıbeti (sonradan R
 $payment?->amount;          // karttan çekilen tutar
 ```
 
-Geçidin ödeme yanıtları (`securePayment`, `regularPayment`, `refundPayment`, `cancelPayment`) ödemeyi `transaction` altında tam verir: `status`, `paymentStatus`, `securityType`, `amount`, `baseAmount`, `currency`, `installmentNumber`, `isTest`, `createdAt`, ve ödeme bir siparişte, linkte ya da abonelikte alındıysa `orderToken` / `paymentLinkToken` / `subscriptionToken`.
+Geçidin ödeme yanıtları (`securePayment`, `regularPayment`, `refundPayment`, `cancelPayment`) ödemeyi `transaction` altında tam verir: `status`, `paymentStatus`, `securityType`, `amount`, `baseAmount`, `currency`, `installmentNumber`, `isTest`, `createdAt`, ve ödeme bir siparişte, linkte ya da abonelikte alındıysa `orderToken` / `paymentLinkToken` / `subscriptionToken`. Linkte alınan ödemede `paymentLinkToken` ile birlikte ödeyenin link ödemesini adlandıran `linkPaymentToken` da dolu gelir.
 
 Müşteri hiç dönmezse panelde tanımladığınız webhook adresi yine de haber alır (`transaction.successful`, `transaction.failed`, `transaction.expired`). Aşağıya bakın.
 
@@ -146,9 +148,12 @@ $order = $client->createOrder(new CreateOrder(
     cancelUrl: 'https://magazam.com/sepet',
 ));
 
+$order->order->token;              // saklayın: siparişi bundan sonra bununla güncellersiniz ve sorgularsınız
 $order->order->checkoutUrl;        // müşteriyi buraya gönderin
 $order->order->amount;             // geçidin hesapladığı toplam
 ```
+
+**Kupon.** API'de kupon alanı yoktur; ödeyen kodu ödeme sayfasında girer. Kupon kullanılan siparişte `$order->discount` (`code`, `amount`) dolu gelir, kullanılmadıysa `null`'dır. Siparişin `subtotal`, `taxAmount` ve `amount` değerleri indirim düşülmüş tutarlardır; kupon gönderim ücretinden düşülmez.
 
 `saveAsProduct: true` olan kalem referansıyla ürün listenize yazılır (referans zorunlu). Gönderim yöntemleri istekte gönderilmez: panelinizdeki **Gönderim Yöntemleri** listesinden ödeyenin adresine uyanlar sunulur, seçilen `$order->order->shippingMethod` olarak döner.
 
@@ -166,23 +171,25 @@ $order->customer?->reference;          // her siparişte müşterisi gelir
 $client->updateOrder(new UpdateOrder(token: $token, description: 'Hediye paketi', clear: ['cancel_url']));
 ```
 
-`create-*` çağrıları aynı referans için tekrarlanabilir: aynı referansla ikinci kez açılan sipariş, link ya da (henüz ödenmemiş) abonelik yeni gönderilenlerle güncellenir ve kendi token'ıyla döner. Ödenmiş sipariş değişmez. **Bekleyen ödeme varken güncellenemez:** ödeme sayfasında son 15 dakika içinde başlamış bir ödeme varsa `create-*` ve `update-*` çağrıları `reference`/`token` alanında "bekleyen bir ödeme var, tamamlanmasını bekleyin" ile reddedilir.
+Aynı referansla `createOrder()` yeniden çağrılırsa yeni bir sipariş ve yeni bir token açılır; önceki sipariş olduğu gibi kalır. Var olan siparişi değiştirmek için `updateOrder()` ile token'ını gönderin. Ödenmiş sipariş değişmez. **Bekleyen ödeme varken güncellenemez:** ödeme sayfasında son 15 dakika içinde başlamış bir ödeme varsa `updateOrder()` ve `updateSubscription()` çağrıları `token` alanında "bekleyen bir ödeme var, tamamlanmasını bekleyin" ile reddedilir. Link güncellemesi bundan etkilenmez.
 
 ## Ödeme linki
 
-Link kim açarsa onun ödeyebileceği bir sayfadır; kapatılana ya da son gününe kadar tekrar tekrar ödenir. Müşterisi yoktur.
+Link kim açarsa onun ödeyebileceği bir sayfadır; kapatılana ya da son gününe kadar tekrar tekrar ödenir. Müşterisi yoktur. Her `createPaymentLink()` çağrısı yeni bir link ve yeni bir token açar; linki sonradan token'ıyla güncellersiniz.
 
 ```php
 use Gurmehub\Odemehub\Enum\Currency;
 use Gurmehub\Odemehub\Request\{CreatePaymentLink, RetrievePaymentLinks, UpdatePaymentLink};
 
 $link = $client->createPaymentLink(new CreatePaymentLink(
-    items: [new Item(name: 'Bağış', unitAmount: '100.00', quantity: 1, taxRate: '0')],
     currency: Currency::TRY,
+    items: [new Item(name: 'Bağış', unitAmount: '100.00', quantity: 1, taxRate: '0')],
     reference: 'LNK-1',                 // boş bırakılırsa geçit LINK{n} üretir
     expiresAt: '2026-12-31',            // çalışma alanının saat dilimine göre gün
+    emailsPayer: true,                  // ödeme tamamlanınca ödeyene e-posta gider; boş: gitmez
 ));
 
+$link->paymentLink->token;              // saklayın: linki bununla güncellersiniz ve sorgularsınız
 $link->paymentLink->checkoutUrl;        // linkin kendisi; ödenemezken (kapalı, süresi geçmiş) null
 $link->paymentLink->expiresAt;          // verilen günün sonu (çalışma alanı saatiyle), ISO 8601 UTC
 $link->paymentLink->isTest;             // ödemeleri şu an test ortamında mı alınıyor
@@ -193,6 +200,46 @@ $detail->transactionsCount;             // linkteki denemelerin tamamının say�
 $detail->successful();                  // listelenenlerden başarılı olanlar
 
 $client->updatePaymentLink(new UpdatePaymentLink(token: $link->paymentLink->token, isActive: false));
+```
+
+**Tutarı ödeyen seçer.** `amountType` (`Enum\AmountType`) linkte ne ödeneceğini söyler: `Fixed` (varsayılan) kalemlerin toplamı; `Custom` ödeyenin yazdığı tutar; `Predefined` `predefinedAmounts` içinden biri (en çok 10); `PredefinedAndCustom` ikisinden biri. `Fixed` dışındaki tiplerde ödeme `itemName` adında tek kalem olarak alınır, `items` gönderilmez (gönderilirse yok sayılır). `taxRate` ödenen tutardaki vergi oranıdır; `taxMode` (`Enum\TaxMode`) `Inclusive` (varsayılan) ise vergi tutarın içinden ayrılır, `Exclusive` ise üstüne eklenir. `currencyType: CurrencyType::Selectable` ile ödeyen `currencies` içinden para birimini seçer; `currency` başlangıçta seçili olandır ve her zaman listede yer alır.
+
+```php
+use Gurmehub\Odemehub\Enum\{AmountType, Currency, CurrencyType, TaxMode};
+
+$donation = $client->createPaymentLink(new CreatePaymentLink(
+    currency: Currency::TRY,
+    amountType: AmountType::PredefinedAndCustom,
+    itemName: 'Bağış',
+    predefinedAmounts: ['100', '250', '500'],
+    taxRate: '0',
+    taxMode: TaxMode::Inclusive,
+    currencyType: CurrencyType::Selectable,
+    currencies: [Currency::USD, Currency::EUR],
+));
+
+$donation->paymentLink->amount;             // null: tutarı ödeyen seçer (subtotal ve taxAmount da null)
+$donation->paymentLink->predefinedAmounts;  // ['100.00', '250.00', '500.00']
+$donation->paymentLink->currencies;         // [Currency::TRY, Currency::USD, Currency::EUR]
+```
+
+Hangi alanın hangi tipte zorunlu olduğunu geçit denetler; eksik alan `ValidationException` (422) ile döner. Güncellemede `clear` listesi `description`, `expires_at`, `payment_provider_token`, `item_name`, `predefined_amounts`, `tax_rate` ve `currencies` alanlarını boşaltabilir. `Fixed` tipe dönen ya da `Fixed` kalan link kalemsiz kalamaz.
+
+**Link ödemeleri.** Linkte yapılan her ödeme bir link ödemesidir (`LINKPAY1`, `LINKPAY2`…); ödeyen açar, siz yalnızca sorgularsınız:
+
+```php
+use Gurmehub\Odemehub\Request\RetrieveLinkPayments;
+
+$payments = $client->retrieveLinkPayments(RetrieveLinkPayments::between('2026-09-26', '2026-10-02'));
+foreach ($payments->linkPayments as $linkPayment) {
+    $linkPayment->paymentLink->token;                   // ödendiği link
+    $linkPayment->status;                               // Enum\LinkPaymentStatus: Open, Paid
+    $linkPayment->isPaid();
+    $linkPayment->amount;                               // çekilen tutar, kupon düşülmüş
+    $linkPayment->discount?->code;                      // ödeyen kupon girdiyse
+    $linkPayment->customer?->billingAddress->email;     // ödeyenin fatura bilgileri
+    $linkPayment->transaction?->token;                  // ödeyen işlem; iade ve iptal bununla
+}
 ```
 
 Panelden açtığınız linkler de aynı uçlarla, token'ı ya da referansıyla bulunur. Linkle ödeyen kişi müşteri listenize yazılmaz ve kartı saklanmaz.
@@ -227,6 +274,8 @@ $client->updateSubscription(new UpdateSubscription(token: $token, status: Subscr
 ```
 
 İptalde para iade edilmez; ödenmiş dönem sonuna kadar sürer, sonra abonelik biter (`subscription.ended`). Ödenmiş dönem yoksa hemen `cancelled` olur.
+
+Kupon yalnızca ilk ödemede, ödeme sayfasında girilir. `$current->discount` (`code`, `amount`) o kuponu verir, yoksa `null`'dır. Aboneliğin kendi `subtotal` / `taxAmount` / `amount` değerleri indirimsizdir; ilk dönemde gerçekten çekilen tutar `renewal->amount`'tadır.
 
 İlk ödemeden sonra yalnızca iptal (`status`), ödeme sayısı (`renewalLimit`, ödenenden az olamaz), dönem (`period`) ve aynı kalemlerin birim fiyatı değişebilir; müşteri dahil başka bir alan gönderilirse geçit 422 ile reddeder.
 
@@ -299,7 +348,7 @@ foreach ($list->payments as $transaction) {
 $client->retrievePayments(RetrievePayments::latest());   // son 7 gün
 ```
 
-Aynısı `retrieveOrders` (`RetrieveOrders`), `retrieveSubscriptions` (`RetrieveSubscriptions`), `retrievePaymentLinks` (`RetrievePaymentLinks`) ve `retrieveSavedCards` (`RetrieveSavedCards`; referans müşterinin referansıdır) için de geçerlidir.
+Aynısı `retrieveOrders` (`RetrieveOrders`), `retrieveSubscriptions` (`RetrieveSubscriptions`), `retrievePaymentLinks` (`RetrievePaymentLinks`), `retrieveLinkPayments` (`RetrieveLinkPayments`; referans link ödemesinin `LINKPAY{n}` numarasıdır) ve `retrieveSavedCards` (`RetrieveSavedCards`; referans müşterinin referansıdır) için de geçerlidir. Referans tekil olmadığından `byReference()` o referanstaki bütün kayıtları döner.
 
 ## Webhook
 
@@ -316,11 +365,11 @@ Olaylar (`Enum\WebhookEvent`):
 
 Sipariş, link ya da abonelikte alınan ödeme için `transaction.*` gelmez; o kaynağın kendi olayı gelir.
 
-**Webhook nihai sonuç değildir.** Gövde yalnızca kaynağın token'ını (para hareketi varsa yanında ödemenin token'ını) taşır. Kararı, token ile geçide sorduğunuz yanıta göre verin ve yanıtı kendi kaydınızla (referans, tutar, durum) karşılaştırın:
+**Webhook nihai sonuç değildir.** Gövde yalnızca kaynağın token'ını (para hareketi varsa yanında ödemenin token'ını; `payment_link.*` olaylarında ayrıca link ödemesinin token'ını) taşır; `discount` gibi ayrıntılar gövdede yoktur. Kararı, token ile geçide sorduğunuz yanıta göre verin ve yanıtı kendi kaydınızla (referans, tutar, durum) karşılaştırın:
 
 ```php
 use Gurmehub\Odemehub\Exception\SignatureException;
-use Gurmehub\Odemehub\Request\{RetrieveOrders, RetrievePayments, RetrieveSubscriptions};
+use Gurmehub\Odemehub\Request\{RetrieveLinkPayments, RetrieveOrders, RetrievePayments, RetrieveSubscriptions};
 
 try {
     $webhook = $client->webhook(
@@ -342,17 +391,21 @@ if ($webhook->orderToken !== null) {
     $order = $client->retrieveOrders(RetrieveOrders::byToken($webhook->orderToken))->orders[0];
     $order->status;                         // Enum\OrderStatus::Paid
     $order->transaction?->paymentStatus;    // Enum\PaymentStatus: Refunded, PartiallyRefunded ...
+} elseif ($webhook->linkPaymentToken !== null) {   // payment_link.*
+    $linkPayment = $client->retrieveLinkPayments(RetrieveLinkPayments::byToken($webhook->linkPaymentToken))->linkPayments[0];
+    $linkPayment->paymentLink->token;       // $webhook->paymentLinkToken ile aynı
+    $linkPayment->isPaid();
+    $linkPayment->transaction?->paymentStatus;
 } elseif ($webhook->subscriptionToken !== null) {
     $subscription = $client->retrieveSubscriptions(RetrieveSubscriptions::byToken($webhook->subscriptionToken))->subscriptions[0];
-} elseif ($webhook->transactionToken !== null) {   // transaction.* ve payment_link.*
+} elseif ($webhook->transactionToken !== null) {   // transaction.*
     $transaction = $client->retrievePayments(RetrievePayments::byToken($webhook->transactionToken))->payments[0];
-    $transaction->paymentLinkToken;         // linkte alınan ödemede linkin token'ı
 }
 
 http_response_code(204);
 ```
 
-Abonelik ve link ödemelerinin iade/iptal olaylarında `transactionToken` da gelir; `retrievePayments()` yanıtındaki `orderToken` / `paymentLinkToken` / `subscriptionToken` ödemenin gerçekten o kaynağa ait olduğunu gösterir.
+Sipariş, link ve abonelikte para hareketi olan olaylarda `transactionToken` da gelir; `retrievePayments()` yanıtındaki `orderToken` / `paymentLinkToken` / `linkPaymentToken` / `subscriptionToken` ödemenin gerçekten o kaynağa ait olduğunu gösterir.
 
 Yalnızca doğrulamak için `$client->verifyWebhook(...)` `bool` döner. Adres üretimde https ve herkese açık olmalıdır; geçit 2xx yanıt alana kadar 60 sn, 5 dk, 15 dk ve 30 dk arayla toplam 5 kez dener. Yönlendirmeleri izlemez.
 
@@ -395,6 +448,26 @@ Sınırlar çalışma alanı başına ve dakikalıktır:
 | 60 istek / dk | `secure-payment`, `regular-payment`, `refund-payment`, `cancel-payment`, `create-saved-card`, `delete-saved-card` (300'e ek olarak) |
 
 Aşıldığında 429 ve `RateLimitException` döner; `retryAfter` kadar bekleyip aynı isteği yeniden gönderin.
+
+## Değişiklikler
+
+### 1.0.2
+
+Eklenenler:
+
+- **`retrieveLinkPayments()`** (`retrieve-link-payments`): linkte yapılan ödemeler, öteki sorgular gibi `RetrieveLinkPayments::byToken()`, `byReference()` (`LINKPAY{n}`), `between()` ya da `latest()` ile. Yanıt `LinkPaymentList`; her `LinkPayment` `token`, `reference`, `paymentLink` (`token`, `reference`), `paymentProviderToken`, `status`, `items`, `subtotal`, `taxAmount`, `amount`, `discount`, `currency`, `customer` (`billingAddress`), `isTest`, `createdAt` ve `transaction` taşır.
+- **`linkPaymentToken`**: `PaymentTransaction` (ödeme yanıtlarındaki `transaction`), `Transaction` (`retrievePayments()` ve `retrievePaymentLinks()` içindeki denemeler) ve `Webhook` (bütün `payment_link.*` olayları) linkte alınan ödemede link ödemesinin token'ını verir.
+- **Ödeme linkinde seçimli tutar ve para birimi:** `CreatePaymentLink` ve `UpdatePaymentLink` yeni alanlar alır: `amountType`, `itemName`, `predefinedAmounts`, `taxRate`, `taxMode`, `currencyType`, `currencies`, `emailsPayer`. `PaymentLink` yanıtı aynı alanları taşır. `UpdatePaymentLink` `clear` listesi artık `item_name`, `predefined_amounts`, `tax_rate` ve `currencies` alanlarını da boşaltabilir.
+- **`discount`**: `Order`, `Subscription` ve `LinkPayment` ödeyenin ödeme sayfasında girdiği kuponu `Discount` (`code`, `amount`) olarak taşır; kupon yoksa `null`. Webhook gövdesinde yoktur.
+- **Yeni enum'lar:** `Enum\LinkPaymentStatus` (`Open`, `Paid`), `Enum\AmountType` (`Fixed`, `Custom`, `Predefined`, `PredefinedAndCustom`), `Enum\CurrencyType` (`Fixed`, `Selectable`), `Enum\TaxMode` (`Inclusive`, `Exclusive`). Bilinmeyen değer, öteki enum'larda olduğu gibi `null` okunur.
+
+Davranış ve küçük kırıcı değişiklikler:
+
+- **`create-*` artık idempotent değil.** `createOrder()`, `createSubscription()` ve `createPaymentLink()` aynı `reference` ile çağrılsa da her seferinde yeni kayıt ve yeni token açar; eski kayıt güncellenmez, 422 de dönmez. Referans tekil değildir. Her create yanıtındaki token'ı saklayın ve değişikliği `update*()` ile token'la yapın.
+- **Link güncellemesi bekleyen ödemede reddedilmez.** Bekleyen ödeme engeli yalnızca `updateOrder()` ve `updateSubscription()` için geçerlidir.
+- **`CreatePaymentLink` yapıcısında `currency` artık ilk parametre, `items` isteğe bağlı** (`Fixed` dışındaki tiplerde gönderilmez). İsimli argümanla yazılmış kod etkilenmez; konumsal argümanla `items, currency` sırasında çağıran kod isimli argümana geçmelidir.
+- **`UpdatePaymentLink` yapıcısında yeni alanlar `clear`'dan önce gelir.** `clear`'ı konumsal argümanla geçen kod isimli argümana geçmelidir.
+- **`PaymentLink::$subtotal`, `$taxAmount`, `$amount` artık `?string`.** Tutarı ödeyenin seçtiği linkte `null` gelir (eskiden boş dize okunuyordu).
 
 ## 1.0.1'deki kırıcı değişiklikler
 

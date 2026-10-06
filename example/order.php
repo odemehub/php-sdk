@@ -19,8 +19,9 @@ use Gurmehub\Odemehub\Request\RetrieveOrders;
 |
 | Tutar gönderilmez; geçit kalemleri ve ödeyenin panelinizdeki listeden seçtiği
 | gönderim yöntemini toplar.
-| Müşterinin bilinen kısmı gönderilir, kalanı sayfada sorulur. Aynı referansla
-| ikinci kez açmak açık siparişi günceller; ödenmiş sipariş değişmez.
+| Müşterinin bilinen kısmı gönderilir, kalanı sayfada sorulur. Her çağrı,
+| referans daha önce gönderilmiş olsa da yeni bir sipariş ve yeni bir token
+| açar; açık siparişi değiştirmek update-order ile token'ıyla olur.
 |
 */
 

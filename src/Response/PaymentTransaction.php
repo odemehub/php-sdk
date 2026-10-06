@@ -48,6 +48,8 @@ final readonly class PaymentTransaction
         public ?string $paymentLinkToken = null,
         /** The token of the subscription whose renewal the payment paid, when it paid one. */
         public ?string $subscriptionToken = null,
+        /** The token of the payer's payment at the link, when the payment was made on one; it comes with `paymentLinkToken`. */
+        public ?string $linkPaymentToken = null,
     ) {}
 
     /**
@@ -87,6 +89,7 @@ final readonly class PaymentTransaction
             orderToken: self::said(self::object($transaction['order'] ?? null)['token'] ?? null),
             paymentLinkToken: self::said(self::object($transaction['payment_link'] ?? null)['token'] ?? null),
             subscriptionToken: self::said(self::object($transaction['subscription'] ?? null)['token'] ?? null),
+            linkPaymentToken: self::said(self::object($transaction['link_payment'] ?? null)['token'] ?? null),
         );
     }
 }

@@ -11,12 +11,14 @@ use Gurmehub\Odemehub\Enum\OrderStatus;
  * An order as the gateway keeps it: what is being paid for, how it may be
  * shipped, what it comes to, where it stands and — once it is paid — the
  * payment that paid it. The same shape comes back whether the order has
- * just been opened, changed, asked after or listed, and in the
- * `order.*` webhook.
+ * just been opened, changed, asked after or listed; an `order.*` webhook
+ * only names it by token.
  *
  * The totals are the gateway's: `subtotal` is the lines net of tax,
  * `shippingAmount` the picked method net of tax, `taxAmount` the tax on
- * both, and `amount` the whole that is charged.
+ * both, and `amount` the whole that is charged. A coupon the payer put on
+ * it is already taken off the lines in all of them; `discount` says which
+ * and how much.
  */
 final readonly class Order
 {
@@ -56,6 +58,8 @@ final readonly class Order
         public ?TransactionReference $transaction,
         /** Who the order is for; null while nobody has said. */
         public ?NamedCustomer $customer = null,
+        /** The coupon the payer put on it at the checkout page; null when none was. */
+        public ?Discount $discount = null,
     ) {}
 
     /**
@@ -74,6 +78,7 @@ final readonly class Order
         $shippingMethod = self::object($order['shipping_method'] ?? null);
         $transaction = self::object($order['transaction'] ?? null);
         $customer = self::object($order['customer'] ?? null);
+        $discount = self::object($order['discount'] ?? null);
 
         return new self(
             token: self::text($order['token'] ?? null),
@@ -93,6 +98,7 @@ final readonly class Order
             checkoutUrl: self::said($order['checkout_url'] ?? null),
             transaction: $transaction === null ? null : TransactionReference::fromArray($transaction),
             customer: $customer === null ? null : NamedCustomer::fromArray($customer),
+            discount: $discount === null ? null : Discount::fromArray($discount),
         );
     }
 }

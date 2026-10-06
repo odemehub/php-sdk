@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__.'/config.php';
 
 use Gurmehub\Odemehub\Exception\SignatureException;
+use Gurmehub\Odemehub\Request\RetrieveLinkPayments;
 use Gurmehub\Odemehub\Request\RetrieveOrders;
 use Gurmehub\Odemehub\Request\RetrievePayments;
 use Gurmehub\Odemehub\Request\RetrieveSubscriptions;
@@ -15,7 +16,7 @@ use Gurmehub\Odemehub\Request\RetrieveSubscriptions;
 |--------------------------------------------------------------------------
 |
 | Geçidin kendi sunucusundan gelen bildirimler buraya POST edilir. Adres
-| panelde Ayarlar → Webhook sayfasında kanal ve olay seçilerek tanımlanır.
+| panelde Ayarlar → Webhook sayfasında olay seçilerek tanımlanır.
 | Gövde olduğu gibi okunur ve imzası gizli anahtarla doğrulanır. Bildirim
 | yalnızca neyin değiştiğini token ile söyler; asıl durum geçide sorulur ve
 | karar o yanıta göre verilir. 2xx yanıt alana kadar geçit beş kez dener;
@@ -41,6 +42,11 @@ $line = match (true) {
         $order = client()->retrieveOrders(RetrieveOrders::byToken($webhook->orderToken))->orders[0];
 
         return 'sipariş '.$order->reference.' -> '.($order->status->value ?? '-').', para '.($order->transaction?->paymentStatus->value ?? '-');
+    })(),
+    $webhook->linkPaymentToken !== null => (function () use ($webhook): string {
+        $linkPayment = client()->retrieveLinkPayments(RetrieveLinkPayments::byToken($webhook->linkPaymentToken))->linkPayments[0];
+
+        return 'link ödemesi '.$linkPayment->reference.' ('.$linkPayment->paymentLink->reference.') -> '.($linkPayment->status->value ?? '-').', para '.($linkPayment->transaction?->paymentStatus->value ?? '-');
     })(),
     $webhook->subscriptionToken !== null => (function () use ($webhook): string {
         $subscription = client()->retrieveSubscriptions(RetrieveSubscriptions::byToken($webhook->subscriptionToken))->subscriptions[0];
