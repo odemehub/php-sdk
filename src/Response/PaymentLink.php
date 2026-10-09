@@ -68,8 +68,8 @@ final readonly class PaymentLink
         /** Whether the payer picks the money; null for a type this client does not know. */
         public ?CurrencyType $currencyType = null,
         public ?array $currencies = null,
-        /** Whether the payer is sent an e-mail once their payment goes through. */
-        public bool $emailsPayer = false,
+        /** Whether the payer is sent an e-mail, at the address they give on the checkout page, once their payment goes through. */
+        public bool $emailsCustomer = false,
     ) {}
 
     /**
@@ -129,7 +129,7 @@ final readonly class PaymentLink
                     $link['currencies'],
                 )))
                 : null,
-            emailsPayer: (bool) ($link['emails_payer'] ?? false),
+            emailsCustomer: (bool) ($link['emails_customer'] ?? false),
         );
     }
 }

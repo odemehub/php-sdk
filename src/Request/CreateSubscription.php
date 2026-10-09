@@ -32,6 +32,8 @@ final readonly class CreateSubscription extends CheckoutMessage
         ?Currency $currency = null,
         ?string $paymentProviderToken = null,
         ?bool $requiresShipping = null,
+        ?bool $locksCustomer = null,
+        ?bool $emailsCustomer = null,
     ) {
         parent::__construct(
             reference: $reference,
@@ -43,6 +45,8 @@ final readonly class CreateSubscription extends CheckoutMessage
             currency: $currency,
             paymentProviderToken: $paymentProviderToken,
             requiresShipping: $requiresShipping,
+            locksCustomer: $locksCustomer,
+            emailsCustomer: $emailsCustomer,
         );
     }
 

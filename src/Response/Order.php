@@ -60,6 +60,12 @@ final readonly class Order
         public ?NamedCustomer $customer = null,
         /** The coupon the payer put on it at the checkout page; null when none was. */
         public ?Discount $discount = null,
+        /** Whether the checkout page asks the payer where the goods go. */
+        public bool $requiresShipping = false,
+        /** Whether the customer stays as sent, shown and not asked on the checkout page. */
+        public bool $locksCustomer = false,
+        /** Whether the customer is sent an e-mail at their billing address. */
+        public bool $emailsCustomer = false,
     ) {}
 
     /**
@@ -99,6 +105,9 @@ final readonly class Order
             transaction: $transaction === null ? null : TransactionReference::fromArray($transaction),
             customer: $customer === null ? null : NamedCustomer::fromArray($customer),
             discount: $discount === null ? null : Discount::fromArray($discount),
+            requiresShipping: (bool) ($order['requires_shipping'] ?? false),
+            locksCustomer: (bool) ($order['locks_customer'] ?? false),
+            emailsCustomer: (bool) ($order['emails_customer'] ?? false),
         );
     }
 }

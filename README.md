@@ -146,6 +146,7 @@ $order = $client->createOrder(new CreateOrder(
     customer: $customer,               // bilinen kadarı; kalanı sayfada sorulur. Hiç verilmeyebilir.
     requiresShipping: true,            // ödeyen adresini ve panelinizdeki gönderim yöntemlerinden birini seçer
     cancelUrl: 'https://magazam.com/sepet',
+    emailsCustomer: true,              // ödeme tamamlanınca fatura adresindeki e-postaya bilgilendirme gider; boş: gitmez
 ));
 
 $order->order->token;              // saklayın: siparişi bundan sonra bununla güncellersiniz ve sorgularsınız
@@ -154,6 +155,8 @@ $order->order->amount;             // geçidin hesapladığı toplam
 ```
 
 **Kupon.** API'de kupon alanı yoktur; ödeyen kodu ödeme sayfasında girer. Kupon kullanılan siparişte `$order->discount` (`code`, `amount`) dolu gelir, kullanılmadıysa `null`'dır. Siparişin `subtotal`, `taxAmount` ve `amount` değerleri indirim düşülmüş tutarlardır; kupon gönderim ücretinden düşülmez.
+
+**Müşteri kilidi.** `locksCustomer: true` gönderilirse ödeme sayfası müşteri bilgisi sormaz; gönderdiğiniz müşteriyi değiştirilemez şekilde gösterir ve ödemeyi onunla alır. Bu durumda fatura adresi eksiksiz olmalıdır; `requiresShipping: true` ise gönderim adresi de (gönderilmezse fatura adresi kullanılır). Eksik alan varsa geçit 422 ile reddeder. Yanıttaki `requiresShipping`, `locksCustomer` ve `emailsCustomer` kaydın bu ayarlarını verir.
 
 `saveAsProduct: true` olan kalem referansıyla ürün listenize yazılır (referans zorunlu). Gönderim yöntemleri istekte gönderilmez: panelinizdeki **Gönderim Yöntemleri** listesinden ödeyenin adresine uyanlar sunulur, seçilen `$order->order->shippingMethod` olarak döner.
 
@@ -186,7 +189,7 @@ $link = $client->createPaymentLink(new CreatePaymentLink(
     items: [new Item(name: 'Bağış', unitAmount: '100.00', quantity: 1, taxRate: '0')],
     reference: 'LNK-1',                 // boş bırakılırsa geçit LINK{n} üretir
     expiresAt: '2026-12-31',            // çalışma alanının saat dilimine göre gün
-    emailsPayer: true,                  // ödeme tamamlanınca ödeyene e-posta gider; boş: gitmez
+    emailsCustomer: true,               // ödeme tamamlanınca ödeyene, sayfada verdiği adrese e-posta gider; boş: gitmez
 ));
 
 $link->paymentLink->token;              // saklayın: linki bununla güncellersiniz ve sorgularsınız
@@ -259,6 +262,7 @@ $subscription = $client->createSubscription(new CreateSubscription(
     items: [new Item(name: 'Premium', unitAmount: '99.90', quantity: 1, taxRate: '20')],
     customer: $customer,
     renewalLimit: 12,                   // boş: iptale kadar
+    emailsCustomer: true,               // her durum değişiminde fatura adresindeki e-postaya bilgilendirme gider
 ));
 
 $subscription->subscription->checkoutUrl;
@@ -276,6 +280,8 @@ $client->updateSubscription(new UpdateSubscription(token: $token, status: Subscr
 İptalde para iade edilmez; ödenmiş dönem sonuna kadar sürer, sonra abonelik biter (`subscription.ended`). Ödenmiş dönem yoksa hemen `cancelled` olur.
 
 Kupon yalnızca ilk ödemede, ödeme sayfasında girilir. `$current->discount` (`code`, `amount`) o kuponu verir, yoksa `null`'dır. Aboneliğin kendi `subtotal` / `taxAmount` / `amount` değerleri indirimsizdir; ilk dönemde gerçekten çekilen tutar `renewal->amount`'tadır.
+
+`locksCustomer` siparişteki gibi çalışır. `emailsCustomer` açıkken dönem ödemesi alınamazsa ödeme sayfasının bağlantısı doğrudan müşteriye gider, size ayrıca e-posta gelmez.
 
 İlk ödemeden sonra yalnızca iptal (`status`), ödeme sayısı (`renewalLimit`, ödenenden az olamaz), dönem (`period`) ve aynı kalemlerin birim fiyatı değişebilir; müşteri dahil başka bir alan gönderilirse geçit 422 ile reddeder.
 
@@ -450,6 +456,17 @@ Sınırlar çalışma alanı başına ve dakikalıktır:
 Aşıldığında 429 ve `RateLimitException` döner; `retryAfter` kadar bekleyip aynı isteği yeniden gönderin.
 
 ## Değişiklikler
+
+### 1.0.3
+
+Eklenenler:
+
+- **Müşteri kilidi ve müşteriye e-posta:** `CreateOrder`, `UpdateOrder`, `CreateSubscription` ve `UpdateSubscription` `locksCustomer` ve `emailsCustomer` alır. `Order` ve `Subscription` yanıtları `requiresShipping`, `locksCustomer` ve `emailsCustomer` taşır.
+
+Kırıcı değişiklik:
+
+- **Ödeme linkinde `emailsPayer` → `emailsCustomer`.** `CreatePaymentLink`, `UpdatePaymentLink` ve `PaymentLink` yanıtında alanın adı değişti; geçit eski `emails_payer` adını artık kabul etmez. `emailsPayer:` yazan kod `emailsCustomer:` olarak değişmelidir.
+- **`UpdateOrder` ve `UpdateSubscription` yapıcısında yeni alanlar `clear`'dan önce gelir.** `clear`'ı konumsal argümanla geçen kod isimli argümana geçmelidir.
 
 ### 1.0.2
 

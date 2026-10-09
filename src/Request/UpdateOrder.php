@@ -32,6 +32,8 @@ final readonly class UpdateOrder extends CheckoutMessage
         ?Currency $currency = null,
         ?string $paymentProviderToken = null,
         ?bool $requiresShipping = null,
+        ?bool $locksCustomer = null,
+        ?bool $emailsCustomer = null,
         public array $clear = [],
     ) {
         parent::__construct(
@@ -44,6 +46,8 @@ final readonly class UpdateOrder extends CheckoutMessage
             currency: $currency,
             paymentProviderToken: $paymentProviderToken,
             requiresShipping: $requiresShipping,
+            locksCustomer: $locksCustomer,
+            emailsCustomer: $emailsCustomer,
         );
     }
 

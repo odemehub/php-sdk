@@ -56,8 +56,8 @@ final readonly class CreatePaymentLink extends Message
         /** Whether the payer picks the money; left out, `fixed`. */
         public ?CurrencyType $currencyType = null,
         public ?array $currencies = null,
-        /** Whether the payer is sent an e-mail once their payment goes through; left out, they are not. */
-        public ?bool $emailsPayer = null,
+        /** Whether the payer is sent an e-mail, at the address they give on the checkout page, once their payment goes through; left out, they are not. */
+        public ?bool $emailsCustomer = null,
     ) {}
 
     public function path(): string
@@ -86,7 +86,7 @@ final readonly class CreatePaymentLink extends Message
                     static fn (Currency $currency): string => $currency->value,
                     $this->currencies,
                 ),
-                'emails_payer' => $this->emailsPayer,
+                'emails_customer' => $this->emailsCustomer,
                 'expires_at' => $this->expiresAt,
                 'is_active' => $this->isActive,
                 'items' => $this->items === null ? null : array_map(

@@ -69,6 +69,12 @@ final readonly class Subscription
         public ?NamedCustomer $customer = null,
         /** The coupon the payer put on the first payment; null when none was. */
         public ?Discount $discount = null,
+        /** Whether the checkout page asks the payer where the goods go. */
+        public bool $requiresShipping = false,
+        /** Whether the customer stays as sent, shown and not asked on the checkout page. */
+        public bool $locksCustomer = false,
+        /** Whether the customer is sent an e-mail at their billing address. */
+        public bool $emailsCustomer = false,
     ) {}
 
     /**
@@ -149,6 +155,9 @@ final readonly class Subscription
             checkoutUrl: self::said($subscription['checkout_url'] ?? null),
             customer: $customer === null ? null : NamedCustomer::fromArray($customer),
             discount: $discount === null ? null : Discount::fromArray($discount),
+            requiresShipping: (bool) ($subscription['requires_shipping'] ?? false),
+            locksCustomer: (bool) ($subscription['locks_customer'] ?? false),
+            emailsCustomer: (bool) ($subscription['emails_customer'] ?? false),
         );
     }
 }

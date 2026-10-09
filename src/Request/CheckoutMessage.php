@@ -53,6 +53,19 @@ abstract readonly class CheckoutMessage extends Message
          * that send there, and its price is added to the amount.
          */
         public ?bool $requiresShipping = null,
+        /**
+         * Whether the customer stays as sent: the checkout page asks the
+         * payer nothing about who they are and only shows it. Takes a
+         * customer with a whole billing address, and a whole shipping
+         * address too when the goods are sent.
+         */
+        public ?bool $locksCustomer = null,
+        /**
+         * Whether the customer is sent an e-mail at their billing address:
+         * on an order once it is paid, on a subscription whenever where it
+         * stands changes.
+         */
+        public ?bool $emailsCustomer = null,
     ) {}
 
     /**
@@ -75,6 +88,8 @@ abstract readonly class CheckoutMessage extends Message
             'success_url' => $this->successUrl,
             'cancel_url' => $this->cancelUrl,
             'requires_shipping' => $this->requiresShipping,
+            'locks_customer' => $this->locksCustomer,
+            'emails_customer' => $this->emailsCustomer,
             'items' => $this->items === null ? null : array_map(
                 static fn (Item $item): array => $item->toArray(),
                 $this->items,
