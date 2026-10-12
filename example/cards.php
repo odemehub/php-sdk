@@ -28,7 +28,7 @@ $errors = [];
 
 $outcome = match (isSubmitted() ? posted('action') : null) {
     'create' => attempt(fn () => client()->createSavedCard(new CreateSavedCard(
-        customer: postedCustomer(),
+        customer: postedPaymentCustomer(),
         card: postedCard(),
         paymentProviderToken: postedOrNull('payment_provider_token'),
     )), $message, $errors),

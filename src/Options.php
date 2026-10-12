@@ -17,7 +17,7 @@ final readonly class Options
     public const API_KEY_HEADER = 'X-Api-Key';
 
     public function __construct(
-        /** The address the application is served from, e.g. https://app.odemehub.com. */
+        /** The address the application is served from, e.g. https://sandbox.odemehub.com while building and https://app.odemehub.com once live. */
         public string $baseUrl,
         /** The team the payments are made on behalf of: the ten-digit workspace id the Entegrasyon page shows. */
         public string $team,

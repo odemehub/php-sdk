@@ -18,7 +18,7 @@ final readonly class SecurePayment extends Payment
         string $amount,
         int $installmentNumber,
         string $ip,
-        Customer $customer,
+        PaymentCustomer $customer,
         /** Where the customer's browser is posted back to once the bank has answered. An https address reachable from the internet. */
         public string $callbackUrl,
         ?Card $card = null,

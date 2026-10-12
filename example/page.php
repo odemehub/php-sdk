@@ -10,6 +10,7 @@ use Gurmehub\Odemehub\Request\Address;
 use Gurmehub\Odemehub\Request\Card;
 use Gurmehub\Odemehub\Request\Customer;
 use Gurmehub\Odemehub\Request\Item;
+use Gurmehub\Odemehub\Request\PaymentCustomer;
 use Gurmehub\Odemehub\Response\GiveBack;
 use Gurmehub\Odemehub\Response\Order;
 use Gurmehub\Odemehub\Response\Payment;
@@ -102,22 +103,41 @@ function isSubmitted(): bool
 }
 
 /**
- * Formdaki müşteri: referansı ve fatura adresi.
+ * Formdaki sipariş ya da abonelik müşterisi: referansı ve fatura adresi.
  */
 function postedCustomer(): Customer
 {
     return new Customer(
         reference: postedOrNull('customer_reference'),
-        billingAddress: new Address(
-            firstname: postedOrNull('customer_firstname'),
-            lastname: postedOrNull('customer_lastname'),
-            email: postedOrNull('customer_email'),
-            phone: postedOrNull('customer_phone'),
-            address: postedOrNull('customer_address'),
-            district: postedOrNull('customer_district'),
-            province: postedOrNull('customer_province'),
-            country: postedOrNull('customer_country'),
-        ),
+        billingAddress: postedBillingAddress(),
+    );
+}
+
+/**
+ * Formdaki ödeme ya da kart saklama müşterisi: fatura adresi ve referansı.
+ */
+function postedPaymentCustomer(): PaymentCustomer
+{
+    return new PaymentCustomer(
+        billingAddress: postedBillingAddress(),
+        reference: postedOrNull('customer_reference'),
+    );
+}
+
+/**
+ * Formdaki fatura adresi.
+ */
+function postedBillingAddress(): Address
+{
+    return new Address(
+        firstname: postedOrNull('customer_firstname'),
+        lastname: postedOrNull('customer_lastname'),
+        email: postedOrNull('customer_email'),
+        phone: postedOrNull('customer_phone'),
+        address: postedOrNull('customer_address'),
+        district: postedOrNull('customer_district'),
+        province: postedOrNull('customer_province'),
+        country: postedOrNull('customer_country'),
     );
 }
 
@@ -162,7 +182,7 @@ function postedPayment(): array
         'amount' => posted('amount'),
         'installmentNumber' => (int) posted('installment_number'),
         'ip' => posted('ip'),
-        'customer' => postedCustomer(),
+        'customer' => postedPaymentCustomer(),
         'card' => postedOrNull('saved_card_token') === null ? postedCard() : null,
         'savedCardToken' => postedOrNull('saved_card_token'),
         'currency' => postedOrNull('currency') === null ? null : Currency::from(posted('currency')),

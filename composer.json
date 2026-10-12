@@ -3,6 +3,12 @@
     "description": "ödemehub ödeme geçidi için PHP istemcisi.",
     "type": "library",
     "license": "proprietary",
+    "homepage": "https://dev.odemehub.com/",
+    "support": {
+        "docs": "https://dev.odemehub.com/",
+        "source": "https://github.com/odemehub/php-sdk",
+        "issues": "https://github.com/odemehub/php-sdk/issues"
+    },
     "require": {
         "php": "^8.2",
         "ext-json": "*",

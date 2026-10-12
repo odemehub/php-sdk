@@ -41,7 +41,7 @@ abstract readonly class Payment extends Message
          * keeps them, their reference. A payment that keeps its card, or is
          * made with a kept one, has to name the customer the card is theirs.
          */
-        public Customer $customer,
+        public PaymentCustomer $customer,
         /** The card typed in. Left out only when a kept card is named instead. */
         public ?Card $card = null,
         /** A card the customer let the merchant keep, by the token the gateway gave it. */

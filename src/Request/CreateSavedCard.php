@@ -14,7 +14,7 @@ final readonly class CreateSavedCard extends Message
 {
     public function __construct(
         /** Who the card is kept for: the reference and the whole billing address. */
-        public Customer $customer,
+        public PaymentCustomer $customer,
         /** The card. Its security code is only needed by the providers that keep a card on the back of a small charge they take back. */
         public Card $card,
         /** The account the card is kept at; left out, the team's default account. It has to keep cards. */

@@ -4,6 +4,8 @@
 
 İstemci her isteği gizli anahtarınızla imzalar, gelen her yanıtın imzasını doğrular. Siz imza, başlık ya da JSON ayrıntılarıyla uğraşmazsınız. Her uç nokta için bir metot vardır ve adı uç noktanın adıdır: `create-order` için `createOrder()`, `retrieve-saved-cards` için `retrieveSavedCards()`.
 
+Uç noktaların, alanların ve akışların ayrıntılı anlatımı geliştirici dokümantasyonundadır: [dev.odemehub.com](https://dev.odemehub.com/).
+
 ## Kurulum
 
 PHP 8.2 ve üzeri gerekir.
@@ -16,12 +18,14 @@ composer require odemehub/php-sdk
 
 Üç bilgi gerekir. Hepsi paneldeki **Entegrasyon** sayfasındadır: Çalışma Alanı Kimliğiniz, API anahtarı ve gizli anahtar.
 
+Entegrasyonu sandbox'ta (`https://sandbox.odemehub.com`) geliştirin; sandbox'ta hesap açın ve bilgileri oradaki panelden alın. Canlıya çıkarken `app.odemehub.com` üzerinde açtığınız hesabın bilgileriyle `baseUrl`'i `https://app.odemehub.com` yapın.
+
 ```php
 use Gurmehub\Odemehub\Client;
 use Gurmehub\Odemehub\Options;
 
 $client = new Client(new Options(
-    baseUrl: 'https://app.odemehub.com',
+    baseUrl: 'https://sandbox.odemehub.com',
     team: '1000000001',                                   // Çalışma Alanı Kimliği
     apiKey: getenv('ODEMEHUB_API_KEY'),
     apiSecret: getenv('ODEMEHUB_API_SECRET'),
@@ -43,16 +47,16 @@ Her istek üç başlıkla gider: `X-Api-Key`, `X-Timestamp` (Unix saniye) ve `X-
 Müşteri hiçbir yere gitmez. Başarılı yanıt, paranın alındığı anlamına gelir.
 
 ```php
-use Gurmehub\Odemehub\Request\{Address, Card, Customer, RegularPayment};
+use Gurmehub\Odemehub\Request\{Address, Card, PaymentCustomer, RegularPayment};
 
-$customer = new Customer(
-    reference: 'musteri-88',           // sizdeki müşteri anahtarı; kart saklanacaksa zorunlu, boşsa müşteri kaydedilmez
-    billingAddress: new Address(
+$customer = new PaymentCustomer(
+    billingAddress: new Address(       // sekiz alanın hepsi zorunlu; şirket alanları üçü birlikte ya da hiç
         firstname: 'Ahmet', lastname: 'Yılmaz',
         email: 'ahmet@ornek.com', phone: '05551112233',
         address: 'Kızılırmak Mah. Dumlupınar Blv. No:3',
         district: 'Çankaya', province: 'Ankara', country: 'TR',
     ),
+    reference: 'musteri-88',           // sizdeki müşteri anahtarı; kart saklanacaksa zorunlu, boşsa müşteri kaydedilmez
 );
 
 $card = new Card(
@@ -81,6 +85,8 @@ if ($payment->result->successful) {
 Reddedilen ödeme de bir sonuçtur: `result->successful` false, `result->message` neden. Yalnızca geçit isteğin kendisini reddederse (hatalı alan, yetki, hız sınırı) istisna fırlatılır.
 
 Kayıtlı kartla ödemede `card` yerine `savedCardToken` verilir; ödeme kartın saklandığı hesaptan geçer, `paymentProviderToken` gönderilmez. Kart hangi müşteri referansıyla saklandıysa ödeme de aynı referansı taşımalıdır.
+
+Ödeme ve kart saklama müşteriyi `PaymentCustomer` ile alır: yalnızca `reference` ve `billingAddress`. Gönderim adresi sipariş ve aboneliğe aittir; onlar `Customer` alır.
 
 **Müşteriler.** `customer.reference` gönderdiğiniz ödeme başarılı olunca geçit müşteriyi o referansla çalışma alanınızın müşteri listesine yazar ya da günceller; başarısız ödeme müşteriye dokunmaz. Referans göndermezseniz ödeme yine alınır ama müşteri kaydedilmez ve kart saklanamaz. Saklanan kart müşteriye bağlanır; müşterinin son ödeme yaptığı kart varsayılan kartı olur.
 
@@ -358,7 +364,7 @@ Aynısı `retrieveOrders` (`RetrieveOrders`), `retrieveSubscriptions` (`Retrieve
 
 ## Webhook
 
-Sipariş ödendiğinde, link ödemesi alındığında, abonelik durum değiştirdiğinde, API ödemesi bittiğinde ve bir ödeme iade ya da iptal edildiğinde geçit imzalı JSON POST eder. Adresler kodda verilmez; panelde **Ayarlar → Webhook** sayfasında olay ve adres seçilerek tanımlanır.
+Sipariş ödendiğinde, link ödemesi alındığında, abonelik durum değiştirdiğinde, API ödemesi bittiğinde ve bir ödeme iade ya da iptal edildiğinde geçit imzalı JSON POST eder. Adresler kodda verilmez; panelde **Ödeme Ayarları → Webhook** sayfasında tanımlanır. Bir adres birden çok olayı dinleyebilir; **Tüm olaylar** seçilirse her olay o adrese gelir. Aynı olay birden çok adreste seçilirse bildirim her adrese ayrı gider.
 
 Olaylar (`Enum\WebhookEvent`):
 
@@ -413,7 +419,9 @@ http_response_code(204);
 
 Sipariş, link ve abonelikte para hareketi olan olaylarda `transactionToken` da gelir; `retrievePayments()` yanıtındaki `orderToken` / `paymentLinkToken` / `linkPaymentToken` / `subscriptionToken` ödemenin gerçekten o kaynağa ait olduğunu gösterir.
 
-Yalnızca doğrulamak için `$client->verifyWebhook(...)` `bool` döner. Adres üretimde https ve herkese açık olmalıdır; geçit 2xx yanıt alana kadar 60 sn, 5 dk, 15 dk ve 30 dk arayla toplam 5 kez dener. Yönlendirmeleri izlemez.
+Yalnızca doğrulamak için `$client->verifyWebhook(...)` `bool` döner. Adres https ve herkese açık olmalıdır.
+
+İlk gönderim olaydan 30 saniye sonra yapılır. Geçit 2xx yanıt alana kadar 60 sn, 5 dk, 15 dk ve 30 dk arayla toplam 5 kez dener; yönlendirmeleri izlemez. Adres panelden kapatılır ya da silinirse otomatik gönderimler durur. Denemeleri biten bildirim panelde ilgili kaydın sayfasından elle yeniden gönderilebilir; elle gönderim beklemeden, aynı `id` ve gövdeyle, bildirim kaydındaki adrese gider.
 
 ## Hatalar
 
@@ -456,6 +464,19 @@ Sınırlar çalışma alanı başına ve dakikalıktır:
 Aşıldığında 429 ve `RateLimitException` döner; `retryAfter` kadar bekleyip aynı isteği yeniden gönderin.
 
 ## Değişiklikler
+
+### 1.0.4
+
+Eklenenler:
+
+- **Sandbox'la başlayan kurulum:** README ve `Options` açıklaması entegrasyonu `https://sandbox.odemehub.com` üzerinde geliştirip canlıya çıkarken `baseUrl`'i `https://app.odemehub.com` yapmayı anlatır.
+- **`Request\PaymentCustomer`:** ödemenin ve kart saklamanın müşterisi; yalnızca `billingAddress` (zorunlu) ve `reference` taşır.
+- **Webhook anlatımı güncellendi:** menü **Ödeme Ayarları → Webhook**, bir adres birden çok olay (ya da **Tüm olaylar**), ilk gönderim olaydan 30 saniye sonra, kapatılan ya da silinen adrese otomatik gönderim yapılmaz, elle yeniden gönderim bildirim kaydındaki adrese gider.
+- **Dokümantasyon bağlantısı:** README ve `composer.json` geliştirici dokümantasyonunu ([dev.odemehub.com](https://dev.odemehub.com/)) gösterir.
+
+Kırıcı değişiklik:
+
+- **`RegularPayment`, `SecurePayment` ve `CreateSavedCard` artık `Customer` değil `PaymentCustomer` alır.** Geçit ödemede ve kart saklamada gönderim adresini 422 ile reddettiği için `shippingAddress` taşıyabilen `Customer` bu isteklerden çıktı. `new Customer(reference: …, billingAddress: …)` yazan ödeme kodu `new PaymentCustomer(billingAddress: …, reference: …)` olmalıdır; `billingAddress` artık zorunludur. Sipariş ve abonelik `Customer` almaya devam eder.
 
 ### 1.0.3
 
