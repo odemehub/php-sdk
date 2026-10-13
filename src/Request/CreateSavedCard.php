@@ -14,7 +14,7 @@ namespace Gurmehub\Odemehub\Request;
 final readonly class CreateSavedCard extends Message
 {
     public function __construct(
-        /** Who the card is kept for: the reference and the whole billing address; what is left out of the address is filled from the team's default payer, where it uses one. */
+        /** Who the card is kept for: the reference, which has to be there, and the whole billing address; where the team uses a default payer, the address may be partial or left out and the rest is filled from it. */
         public PaymentCustomer $customer,
         /** The card. Its security code is only needed by the providers that keep a card on the back of a small charge they take back. */
         public Card $card,
@@ -37,7 +37,7 @@ final readonly class CreateSavedCard extends Message
 
         return self::said([
             'saved_card' => $this->paymentProviderToken === null ? null : ['payment_provider_token' => $this->paymentProviderToken],
-            'customer' => $this->customer->toArray(),
+            'customer' => $this->customer->toArray() ?: null,
             'card' => $card,
         ]);
     }

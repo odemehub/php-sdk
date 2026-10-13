@@ -7,7 +7,8 @@ namespace Gurmehub\Odemehub\Response;
 /**
  * Who a payment was made for, as the payment froze it: the merchant's own
  * key for them, if the payment named one, and the billing address as it
- * was at the time.
+ * was at the time, the fields filled from the team's default payer
+ * (Varsayılan Ödeyen) included.
  */
 final readonly class PaymentCustomer
 {

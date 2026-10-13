@@ -29,8 +29,8 @@ final readonly class Card
         /**
          * Whether the customer asked for this card to be kept after a
          * successful payment, so they can pay with it again without typing
-         * it out. Needs a customer reference to be kept under, a plan that
-         * covers saved cards and an account whose provider keeps cards.
+         * it out. Needs a customer reference to be kept under, the Kayıtlı
+         * Kartlar module turned on and an account whose provider keeps cards.
          * Read only by payments; left out, it is not sent.
          */
         public ?bool $shouldSave = null,

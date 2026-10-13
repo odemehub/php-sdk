@@ -88,6 +88,8 @@ Kayıtlı kartla ödemede `card` yerine `savedCardToken` verilir; ödeme kartın
 
 Ödeme ve kart saklama müşteriyi `PaymentCustomer` ile alır: yalnızca `reference` ve `billingAddress`. Gönderim adresi sipariş ve aboneliğe aittir; onlar `Customer` alır.
 
+**Varsayılan Ödeyen.** Panelde **Ödeme Ayarları → Varsayılan Ödeyen** açıksa `billingAddress` eksik alanlarla verilebilir ya da hiç verilmeyebilir; gönderilmeyen alanlar ödeme sağlayıcısına varsayılan ödeyenin bilgisiyle gider, müşteri kaydına yazılmaz. Ödemede `new PaymentCustomer()` (adres de referans da yok) müşteriyi istekten tamamen çıkarır; kart saklamada `reference` yine zorunludur. Ayar kapalıyken sekiz kişi alanı zorunludur. SDK bunu denetlemez; eksik alanı geçit 422 ile bildirir.
+
 **Müşteriler.** `customer.reference` gönderdiğiniz ödeme başarılı olunca geçit müşteriyi o referansla çalışma alanınızın müşteri listesine yazar ya da günceller; başarısız ödeme müşteriye dokunmaz. Referans göndermezseniz ödeme yine alınır ama müşteri kaydedilmez ve kart saklanamaz. Saklanan kart müşteriye bağlanır; müşterinin son ödeme yaptığı kart varsayılan kartı olur.
 
 Tutarlar nokta ayraçlı ve en çok iki ondalıklı dizedir: `'100'`, `'100.1'`, `'100.10'`. Para birimi `Enum\Currency` ile verilir, boş bırakılırsa TRY'dir. Taksit yalnızca TRY'de 1'den büyük olabilir. Aynı anda satılan tutar ile çekilen tutar farklıysa (vade farkı) `baseAmount` verilir.
@@ -430,7 +432,7 @@ Hepsi `Gurmehub\Odemehub\Exception\OdemehubException` türündendir.
 | İstisna | Durum | Anlamı |
 | --- | --- | --- |
 | `AuthenticationException` | 401 | API anahtarı yanlış, imza tutmuyor ya da zaman damgası aralık dışında |
-| `ForbiddenException` | 403 | Çalışma alanı işlem yapamıyor (ödenmemiş bakiye, plan) ya da plan bu özelliği kapsamıyor |
+| `ForbiddenException` | 403 | Çalışma alanı işlem yapamıyor (ödenmemiş bakiye) ya da ucun modülü kapalı; açtırmak için bizimle iletişime geçin |
 | `NotFoundException` | 404 | Güncellenmek, silinmek, iade ya da iptal edilmek istenen kayıt yok (sorgularda boş liste döner) |
 | `ValidationException` | 422 | Alan hataları; `$e->errors` noktalı alan adıyla (`transaction.amount`, `order.items.0.name`) |
 | `RateLimitException` | 429 | İstek sınırı; `$e->retryAfter` saniye |
@@ -464,6 +466,16 @@ Sınırlar çalışma alanı başına ve dakikalıktır:
 Aşıldığında 429 ve `RateLimitException` döner; `retryAfter` kadar bekleyip aynı isteği yeniden gönderin.
 
 ## Değişiklikler
+
+### 1.0.5
+
+Eklenenler:
+
+- **Varsayılan Ödeyen:** `PaymentCustomer`'da `billingAddress` artık isteğe bağlıdır (`?Address`, varsayılanı `null`) ve verilmezse gönderilmez. Çalışma alanında Varsayılan Ödeyen açıksa `RegularPayment`, `SecurePayment` ve `CreateSavedCard` fatura adresi eksik ya da hiç verilmeden gönderilebilir; eksik alanlar ödeme sağlayıcısına varsayılan ödeyenden gider. Ödemede `new PaymentCustomer()` `customer`'ı istekten tamamen çıkarır. Ayar kapalıyken sekiz kişi alanı yine zorunludur; denetimi geçit yapar (422). Var olan kod değişmeden çalışır.
+
+Değişenler:
+
+- **403 açıklaması:** plan sistemi kalktı. `ForbiddenException` (403) artık ödenmemiş bakiye ya da ucun modülünün kapalı olduğu anlamına gelir (`Çalışma alanınızda bu modül kapalı; açtırmak için bizimle iletişime geçin.`); modülleri ödemehub açar. README'deki hata tablosu ile `ForbiddenException` ve `Card::$shouldSave` açıklamaları buna göre güncellendi; kod değişmedi.
 
 ### 1.0.4
 

@@ -41,6 +41,8 @@ abstract readonly class Payment extends Message
          * where the team fills the rest from its default payer, and, when
          * the merchant keeps them, their reference. A payment that keeps its card, or is
          * made with a kept one, has to name the customer the card is theirs.
+         * Where the team uses a default payer, `new PaymentCustomer()` names
+         * nobody and the customer is left out of the body altogether.
          */
         public PaymentCustomer $customer,
         /** The card typed in. Left out only when a kept card is named instead. */
@@ -80,7 +82,7 @@ abstract readonly class Payment extends Message
                 'ip' => $this->ip,
                 'saved_card_token' => $this->savedCardToken,
             ]),
-            'customer' => $this->customer->toArray(),
+            'customer' => $this->customer->toArray() ?: null,
             'card' => $this->card?->toArray(),
         ]);
     }
