@@ -37,8 +37,9 @@ abstract readonly class Payment extends Message
         /** The address the customer is paying from, as the merchant sees it. */
         public string $ip,
         /**
-         * Who is paying: the whole billing address and, when the merchant
-         * keeps them, their reference. A payment that keeps its card, or is
+         * Who is paying: the whole billing address, or what is known of it
+         * where the team fills the rest from its default payer, and, when
+         * the merchant keeps them, their reference. A payment that keeps its card, or is
          * made with a kept one, has to name the customer the card is theirs.
          */
         public PaymentCustomer $customer,

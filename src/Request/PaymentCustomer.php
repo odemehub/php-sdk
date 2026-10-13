@@ -6,7 +6,9 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * The customer a payment is made for or a card is kept for: the whole
- * billing address and the merchant's own key for them. Nothing goes to a
+ * billing address, or what is known of it where the team fills the rest
+ * from its default payer (Varsayılan Ödeyen), and the merchant's own key
+ * for them. Nothing goes to a
  * shipping address here; the gateway turns down a payment or a kept card
  * that names one.
  *
@@ -17,7 +19,7 @@ namespace Gurmehub\Odemehub\Request;
 final readonly class PaymentCustomer
 {
     public function __construct(
-        /** All eight person fields; the three company fields together or not at all. */
+        /** All eight person fields, unless the team fills what is left out from its default payer; the three company fields together or not at all. */
         public Address $billingAddress,
         /** The key the merchant keeps this customer under in its own system. */
         public ?string $reference = null,

@@ -6,14 +6,15 @@ namespace Gurmehub\Odemehub\Request;
 
 /**
  * A card kept for a customer without a payment being made on it. The
- * customer is given by reference with the whole billing address: once the
- * provider takes the card, the team's customer under that reference is
+ * customer is given by reference with the whole billing address, or what
+ * is known of it where the team fills the rest from its default payer:
+ * once the provider takes the card, the team's customer under that reference is
  * written from what was sent and the card is kept for them.
  */
 final readonly class CreateSavedCard extends Message
 {
     public function __construct(
-        /** Who the card is kept for: the reference and the whole billing address. */
+        /** Who the card is kept for: the reference and the whole billing address; what is left out of the address is filled from the team's default payer, where it uses one. */
         public PaymentCustomer $customer,
         /** The card. Its security code is only needed by the providers that keep a card on the back of a small charge they take back. */
         public Card $card,

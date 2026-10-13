@@ -7,8 +7,9 @@ namespace Gurmehub\Odemehub\Request;
 /**
  * Where a customer is billed, or where their goods go. A payment and a
  * kept card need the whole of the eight person fields on the billing
- * address; an order or a subscription takes whatever is known and asks the
- * payer for the rest on the checkout page.
+ * address, unless the team fills what is left out from its default payer
+ * (Varsayılan Ödeyen); an order or a subscription takes whatever is known
+ * and asks the payer for the rest on the checkout page.
  *
  * The three company fields are read on the billing address only, and
  * always together: a company is no use on an invoice half given, and the

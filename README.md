@@ -50,7 +50,7 @@ Müşteri hiçbir yere gitmez. Başarılı yanıt, paranın alındığı anlamı
 use Gurmehub\Odemehub\Request\{Address, Card, PaymentCustomer, RegularPayment};
 
 $customer = new PaymentCustomer(
-    billingAddress: new Address(       // sekiz alanın hepsi zorunlu; şirket alanları üçü birlikte ya da hiç
+    billingAddress: new Address(       // sekiz alanın hepsi zorunlu (Varsayılan Ödeyen açıksa eksik olabilir); şirket alanları üçü birlikte ya da hiç
         firstname: 'Ahmet', lastname: 'Yılmaz',
         email: 'ahmet@ornek.com', phone: '05551112233',
         address: 'Kızılırmak Mah. Dumlupınar Blv. No:3',
