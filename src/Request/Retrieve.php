@@ -12,6 +12,10 @@ namespace Gurmehub\Odemehub\Request;
  * any of these, it is the last seven days up to today. The answer is
  * always a list, oldest first, and an empty one when nothing matches.
  * Nothing is changed by asking.
+ *
+ * The answer always comes a page at a time and says which page it is and
+ * how many there are. Asked without `page` or `perPage`, it is the first
+ * 250 records; past that, ask page by page with `withPage()`.
  */
 abstract readonly class Retrieve extends Message
 {
@@ -24,6 +28,10 @@ abstract readonly class Retrieve extends Message
         public ?string $createdFrom = null,
         /** The last day, as `YYYY-MM-DD`, at most six days after the first. */
         public ?string $createdTo = null,
+        /** The page, from 1. Left out with `perPage` too, the first page of 250 comes back. */
+        public ?int $page = null,
+        /** How many records a page holds, at most 250; 50 when a page is given without it. */
+        public ?int $perPage = null,
     ) {}
 
     /**
@@ -59,6 +67,22 @@ abstract readonly class Retrieve extends Message
     }
 
     /**
+     * The same question, asked for one page: this page, of this many
+     * records, or of 50 when no size is given.
+     */
+    public function withPage(int $page, ?int $perPage = null): static
+    {
+        return new static(
+            token: $this->token,
+            reference: $this->reference,
+            createdFrom: $this->createdFrom,
+            createdTo: $this->createdTo,
+            page: $page,
+            perPage: $perPage,
+        );
+    }
+
+    /**
      * The field the merchant's own reference travels in.
      */
     protected function referenceField(): string
@@ -76,6 +100,8 @@ abstract readonly class Retrieve extends Message
             $this->referenceField() => $this->reference,
             'created_from' => $this->createdFrom,
             'created_to' => $this->createdTo,
+            'page' => $this->page,
+            'per_page' => $this->perPage,
         ]);
     }
 }

@@ -21,6 +21,7 @@ final readonly class Customer
         /** The key the merchant keeps this customer under in its own system. */
         public ?string $reference = null,
         public ?Address $billingAddress = null,
+        /** Only the eight person fields; the gateway turns down a shipping address carrying the company fields (422). */
         public ?Address $shippingAddress = null,
     ) {}
 

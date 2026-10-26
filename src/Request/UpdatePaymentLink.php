@@ -15,7 +15,8 @@ use Gurmehub\Odemehub\Enum\TaxMode;
  * there was. A payment under way does not stand in the way: the payments
  * to come are charged as the link now is. A link turned back to `fixed`,
  * or left so, has to have lines; one whose last day has gone by is
- * switched on only by giving it a new day.
+ * switched on only by giving it a new day. A change that sends nothing
+ * but the token is turned down (422).
  */
 final readonly class UpdatePaymentLink extends Message
 {

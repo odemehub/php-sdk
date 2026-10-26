@@ -277,6 +277,7 @@ function parameter(string $field): string
         str_starts_with($field, 'customer_') => 'customer.billing_address.'.substr($field, 9),
         str_starts_with($field, 'card_') => 'card.'.substr($field, 5),
         str_starts_with($field, 'item_') => 'items.0.'.substr($field, 5),
+        str_starts_with($field, 'settings_') => 'settings.'.substr($field, 9),
         default => $field,
     };
 }

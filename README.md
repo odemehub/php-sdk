@@ -1,6 +1,6 @@
 # ödemehub PHP SDK
 
-ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için PHP istemcisi. Kart çekmek, 3D ödeme başlatmak, sipariş, abonelik ve ödeme linki açmak, kart saklamak, iade ve iptal yapmak, taksit sormak: hepsi burada.
+ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için PHP istemcisi. Kart çekmek, 3D ödeme başlatmak, sipariş, abonelik ve ödeme linki açmak, kart saklamak, iade ve iptal yapmak, taksit sormak, banka hesaplarının hareketlerini okumak: hepsi burada.
 
 İstemci her isteği gizli anahtarınızla imzalar, gelen her yanıtın imzasını doğrular. Siz imza, başlık ya da JSON ayrıntılarıyla uğraşmazsınız. Her uç nokta için bir metot vardır ve adı uç noktanın adıdır: `create-order` için `createOrder()`, `retrieve-saved-cards` için `retrieveSavedCards()`.
 
@@ -34,7 +34,7 @@ $client = new Client(new Options(
 
 Gizli anahtar hiçbir zaman tel üzerinden gitmez; yalnızca imza üretmekte ve doğrulamakta kullanılır. Anahtarları kodun içine yazmayın.
 
-Geçit hiçbir yerde veritabanı numarası kullanmaz: ödeme hesabı, işlem, sipariş, abonelik, link, link ödemesi ve kayıtlı kart her zaman UUID token'ıyla anılır.
+Geçit hiçbir yerde veritabanı numarası kullanmaz: ödeme hesabı, işlem, sipariş, abonelik, link, link ödemesi, kayıtlı kart, banka hesabı ve banka hareketi her zaman UUID token'ıyla anılır.
 
 `reference` sizin etiketinizdir, tekil olması gerekmez. `create-*` çağrıları (`createOrder`, `createSubscription`, `createPaymentLink`) her seferinde yeni bir kayıt ve yeni bir token açar; aynı referansı ikinci kez göndermek eski kaydı değiştirmez, hata da döndürmez. Böylece 3D'de vazgeçen ödeyeni aynı referansla yeniden ödemeye gönderebilirsiniz. Her create yanıtındaki token'ı saklayın: kaydı sonradan bu token'la güncellersiniz ve sorgularsınız. Referansla sorgu (`byReference()`) o referanstaki bütün kayıtları döner.
 
@@ -118,6 +118,8 @@ if ($payment->redirectUrl !== null) {
 
 Başarılı yanıt ödeme alındı demek değildir; müşterinin gideceği adres hazır demektir. Adres 15 dakika geçerlidir ve bir kez açılır; süresinde açılmayan ödeme `expired` olur.
 
+`callbackUrl`, `successUrl` ve `cancelUrl` canlıda internetten erişilebilen bir https adresi olmalıdır; sandbox'ta `localhost` ve `.test` dahil her http/https adresi kabul edilir, yani dönüş adresi olarak kendi makinenizi kullanabilirsiniz.
+
 Banka işini bitirince müşterinin tarayıcısı `callbackUrl` adresinize şu alanları POST eder: `transaction_token`, `reference`, `successful` (`1`/`0`). Bu POST imzasızdır ve müşterinin tarayıcısından gelir; yalnızca ipucudur. Sonucu kendi imzalı bağlantınızdan sorun:
 
 ```php
@@ -164,7 +166,7 @@ $order->order->amount;             // geçidin hesapladığı toplam
 
 **Kupon.** API'de kupon alanı yoktur; ödeyen kodu ödeme sayfasında girer. Kupon kullanılan siparişte `$order->discount` (`code`, `amount`) dolu gelir, kullanılmadıysa `null`'dır. Siparişin `subtotal`, `taxAmount` ve `amount` değerleri indirim düşülmüş tutarlardır; kupon gönderim ücretinden düşülmez.
 
-**Müşteri kilidi.** `locksCustomer: true` gönderilirse ödeme sayfası müşteri bilgisi sormaz; gönderdiğiniz müşteriyi değiştirilemez şekilde gösterir ve ödemeyi onunla alır. Bu durumda fatura adresi eksiksiz olmalıdır; `requiresShipping: true` ise gönderim adresi de (gönderilmezse fatura adresi kullanılır). Eksik alan varsa geçit 422 ile reddeder. Yanıttaki `requiresShipping`, `locksCustomer` ve `emailsCustomer` kaydın bu ayarlarını verir.
+**Müşteri kilidi.** `locksCustomer: true` gönderilirse ödeme sayfası müşteri bilgisi sormaz; gönderdiğiniz müşteriyi değiştirilemez şekilde gösterir ve ödemeyi onunla alır. Bu durumda fatura adresi eksiksiz olmalıdır; `requiresShipping: true` ise gönderim adresi de (gönderilmezse fatura adresi kullanılır). Gönderim adresi (`shippingAddress`) yalnızca sekiz kişi alanını alır; şirket unvanı, vergi numarası ya da vergi dairesi verilirse geçit 422 döner. Eksik alan varsa geçit 422 ile reddeder. Yanıttaki `requiresShipping`, `locksCustomer` ve `emailsCustomer` kaydın bu ayarlarını verir.
 
 `saveAsProduct: true` olan kalem referansıyla ürün listenize yazılır (referans zorunlu). Gönderim yöntemleri istekte gönderilmez: panelinizdeki **Gönderim Yöntemleri** listesinden ödeyenin adresine uyanlar sunulur, seçilen `$order->order->shippingMethod` olarak döner.
 
@@ -182,7 +184,7 @@ $order->customer?->reference;          // her siparişte müşterisi gelir
 $client->updateOrder(new UpdateOrder(token: $token, description: 'Hediye paketi', clear: ['cancel_url']));
 ```
 
-Aynı referansla `createOrder()` yeniden çağrılırsa yeni bir sipariş ve yeni bir token açılır; önceki sipariş olduğu gibi kalır. Var olan siparişi değiştirmek için `updateOrder()` ile token'ını gönderin. Ödenmiş sipariş değişmez. **Bekleyen ödeme varken güncellenemez:** ödeme sayfasında son 15 dakika içinde başlamış bir ödeme varsa `updateOrder()` ve `updateSubscription()` çağrıları `token` alanında "bekleyen bir ödeme var, tamamlanmasını bekleyin" ile reddedilir. Link güncellemesi bundan etkilenmez.
+Aynı referansla `createOrder()` yeniden çağrılırsa yeni bir sipariş ve yeni bir token açılır; önceki sipariş olduğu gibi kalır. Var olan siparişi değiştirmek için `updateOrder()` ile token'ını gönderin. Bir istekte en çok 100 kalem gönderilir (sipariş, abonelik ve link). Ödenmiş sipariş değişmez. **Bekleyen ödeme varken güncellenemez:** ödeme sayfasında son 15 dakika içinde başlamış bir ödeme varsa `updateOrder()` ve `updateSubscription()` çağrıları `token` alanında "bekleyen bir ödeme var, tamamlanmasını bekleyin" ile reddedilir. Link güncellemesi bundan etkilenmez.
 
 ## Ödeme linki
 
@@ -234,7 +236,7 @@ $donation->paymentLink->predefinedAmounts;  // ['100.00', '250.00', '500.00']
 $donation->paymentLink->currencies;         // [Currency::TRY, Currency::USD, Currency::EUR]
 ```
 
-Hangi alanın hangi tipte zorunlu olduğunu geçit denetler; eksik alan `ValidationException` (422) ile döner. Güncellemede `clear` listesi `description`, `expires_at`, `payment_provider_token`, `item_name`, `predefined_amounts`, `tax_rate` ve `currencies` alanlarını boşaltabilir. `Fixed` tipe dönen ya da `Fixed` kalan link kalemsiz kalamaz.
+Hangi alanın hangi tipte zorunlu olduğunu geçit denetler; eksik alan `ValidationException` (422) ile döner. `updatePaymentLink()` yalnızca token'la, değiştirilecek bir alan olmadan çağrılırsa geçit 422 döner; `updateBankAccount()` için de aynısı geçerlidir. Güncellemede `clear` listesi `description`, `expires_at`, `payment_provider_token`, `item_name`, `predefined_amounts`, `tax_rate` ve `currencies` alanlarını boşaltabilir. `Fixed` tipe dönen ya da `Fixed` kalan link kalemsiz kalamaz.
 
 **Link ödemeleri.** Linkte yapılan her ödeme bir link ödemesidir (`LINKPAY1`, `LINKPAY2`…); ödeyen açar, siz yalnızca sorgularsınız:
 
@@ -342,6 +344,45 @@ foreach ($bin->installments as $installment) {
 }
 ```
 
+## Banka hareketleri
+
+Banka hesabınızı bankanın verdiği API kimlik bilgileriyle eklersiniz; geçit hesabın hareketlerini saatte bir bankadan çekip saklar, siz hesabın token'ıyla sorarsınız. Uçlar **Banka Hareketleri** modülünü ister. Hangi bankanın eklenebildiğini ve hangi kimlik bilgilerini istediğini `retrieveBanks()` söyler; bugün yalnızca Enpara vardır.
+
+```php
+use Gurmehub\Odemehub\Request\{CreateBankAccount, DeleteBankAccount, RetrieveBankAccounts, RetrieveBanks, RetrieveBankTransactions, UpdateBankAccount};
+
+$client->retrieveBanks(new RetrieveBanks)->banks;   // her bankada id, title ve fields (key, required, label)
+
+$added = $client->createBankAccount(new CreateBankAccount(
+    provider: 'enpara',
+    name: 'Enpara vadesiz',
+    iban: 'TR33 0006 1005 1978 6457 8413 26',       // boşluklar silinir; TR ve 24 rakam
+    settings: ['client_id' => '…', 'client_secret' => '…', 'access_token' => '…', 'refresh_token' => '…'],
+));
+$added->bankAccount?->token;            // saklayın; banka reddettiyse null, nedeni result->message
+
+$client->retrieveBankAccounts(new RetrieveBankAccounts);                              // bütün hesaplar; ya da en çok 50 token
+$client->updateBankAccount(new UpdateBankAccount(token: $token, name: 'Ana hesap'));   // settings: yalnızca değişecek bilgiler
+$client->deleteBankAccount(new DeleteBankAccount($token));                            // delete-bank-account/{token}
+
+$page = $client->retrieveBankTransactions(new RetrieveBankTransactions(
+    bankAccountTokens: [$token],        // 1–50 hesap
+    createdFrom: '2026-10-20',          // boş: son 7 gün
+    createdTo: '2026-10-26',
+    page: 1,                            // perPage: page verilince varsayılan 50, en çok 250; ikisi de boşsa 250
+));
+foreach ($page->bankTransactions as $movement) {
+    $movement->amount;                  // işaretli: '22164.96' giren, '-40.00' çıkan
+    $movement->bookedAt;                // bankanın kaydettiği an, ISO 8601 UTC
+    $movement->counterpartyIban;
+}
+$page->pagination->hasMorePages();
+```
+
+Geçit hesabı eklemeden ve yeni kimlik bilgilerini kaydetmeden önce bankaya sorar. Bankanın reddi istisna değildir: `result->successful` false, `bankAccount` null döner ve hiçbir şey değişmez. Hesabın bankası ve IBAN'ı değişmez; aynı IBAN çalışma alanına bir kez eklenir. Kimlik bilgileri hiçbir yanıtta dönmez. Hesap silinince ondan okunan bütün hareketler de silinir.
+
+Hareketler bankadan değil geçidin sakladığı kayıttan okunur; veri en çok bir saat geridedir. `bankAccount->syncedAt` son okumayı, `lastError` son okumanın neden başarısız olduğunu verir. Hesap eklenince son 7 günün hareketleri çekilir. Gün aralığı çalışma alanının saat dilimindedir, bankanın tarihine (`booked_at`) göre süzülür ve iki uç dahil en çok 7 gündür. Birden çok hesap verilirse hareketler bankanın tarihine göre iç içe, eskiden yeniye sıralanır. Banka hareketleri için webhook yoktur.
+
 ## Sorgulama
 
 Her kaynak tek bir `retrieve-*` ucuyla sorulur ve yanıt her zaman bir listedir (eskiden yeniye); eşleşen yoksa boş liste döner. Kayıt üç yoldan biriyle adlandırılır: token'ı, sizdeki referansı ya da açıldığı günler. Gün aralığı en çok 7 gündür ve çalışma alanının saat dilimindedir; hiçbiri verilmezse son 7 gün.
@@ -363,6 +404,22 @@ $client->retrievePayments(RetrievePayments::latest());   // son 7 gün
 ```
 
 Aynısı `retrieveOrders` (`RetrieveOrders`), `retrieveSubscriptions` (`RetrieveSubscriptions`), `retrievePaymentLinks` (`RetrievePaymentLinks`), `retrieveLinkPayments` (`RetrieveLinkPayments`; referans link ödemesinin `LINKPAY{n}` numarasıdır) ve `retrieveSavedCards` (`RetrieveSavedCards`; referans müşterinin referansıdır) için de geçerlidir. Referans tekil olmadığından `byReference()` o referanstaki bütün kayıtları döner.
+
+**Sayfalama.** Bütün sorgu yanıtları sayfalıdır ve her zaman `pagination` (`page`, `perPage`, `total`, `lastPage`, `hasMorePages()`) taşır. Her sorgu isteği `page` ve `perPage` (en çok 250) alır; fabrika metotlarıyla kurulan isteğe `withPage()` eklenir. `page` verilip `perPage` verilmezse sayfa 50 kayıttır; ikisi de verilmezse ilk sayfa 250 kayıtla döner. Yoğun bir çalışma alanında 7 günde binlerce kayıt olabilir; `pagination->total` 250'yi aşıyorsa sayfa sayfa dolaşın. Sıralama değişmez.
+
+```php
+$page = 1;
+
+do {
+    $list = $client->retrievePayments(RetrievePayments::between('2026-09-26', '2026-10-02')->withPage($page++, 250));
+
+    foreach ($list->payments as $transaction) {
+        // ...
+    }
+} while ($list->pagination?->hasMorePages());
+```
+
+Banka hesapları ve hareketleri bu kalıbın dışındadır: `retrieveBankAccounts()` yalnızca token listesi alır (boş: bütün hesaplar) ve sayfalı değildir; `retrieveBankTransactions()` hesap token'larıyla ve gün aralığıyla sorulur, sayfalaması yukarıdakiyle aynıdır.
 
 ## Webhook
 
@@ -433,7 +490,7 @@ Hepsi `Gurmehub\Odemehub\Exception\OdemehubException` türündendir.
 | --- | --- | --- |
 | `AuthenticationException` | 401 | API anahtarı yanlış, imza tutmuyor ya da zaman damgası aralık dışında |
 | `ForbiddenException` | 403 | Çalışma alanı işlem yapamıyor (ödenmemiş bakiye) ya da ucun modülü kapalı; açtırmak için bizimle iletişime geçin |
-| `NotFoundException` | 404 | Güncellenmek, silinmek, iade ya da iptal edilmek istenen kayıt yok (sorgularda boş liste döner) |
+| `NotFoundException` | 404 | Token'la adlandırılan güncelleme, silme, iade ya da iptal çağrısında (`update-*`, `delete-saved-card`, `delete-bank-account`, `refund-payment`, `cancel-payment`) kayıt yok. Sorgular (token'la, referansla ya da tarihle) bulunamayan kaydı 404 değil boş liste olarak döner |
 | `ValidationException` | 422 | Alan hataları; `$e->errors` noktalı alan adıyla (`transaction.amount`, `order.items.0.name`) |
 | `RateLimitException` | 429 | İstek sınırı; `$e->retryAfter` saniye |
 | `SignatureException` | — | Yanıtın ya da webhook'un imzası doğrulanamadı; içeriğe güvenmeyin |
@@ -452,7 +509,7 @@ try {
 }
 ```
 
-Reddedilen ödeme, iade ya da kart saklama istisna değildir; `result->successful` false ve `result->message` dolu döner.
+Reddedilen ödeme, iade, kart saklama ya da bankanın reddettiği banka hesabı istisna değildir; `result->successful` false ve `result->message` dolu döner.
 
 ## İstek sınırları
 
@@ -466,6 +523,25 @@ Sınırlar çalışma alanı başına ve dakikalıktır:
 Aşıldığında 429 ve `RateLimitException` döner; `retryAfter` kadar bekleyip aynı isteği yeniden gönderin.
 
 ## Değişiklikler
+
+### 1.0.6
+
+Eklenenler:
+
+- **Banka hareketleri:** `retrieveBanks()` (`retrieve-banks`), `createBankAccount()` (`create-bank-account`), `retrieveBankAccounts()` (`retrieve-bank-accounts`), `updateBankAccount()` (`update-bank-account/{token}`), `deleteBankAccount()` (`delete-bank-account/{token}`) ve `retrieveBankTransactions()` (`retrieve-bank-transactions`). Yanıtlar `BankList` (`Bank`, `BankField`), `BankAccountDetails`, `BankAccountList`, `DeletedBankAccount` ve `BankTransactionList` (`Pagination`, `BankTransaction`); hareketin `currency`'si `Enum\Currency`'dir. Bankanın reddettiği kimlik bilgisi istisna değil, `result->successful` false ve `bankAccount` null döner. Uçlar Banka Hareketleri modülünü ister; kapalıysa `ForbiddenException` (403).
+- **Sayfalı hareketler:** `RetrieveBankTransactions` `page` ve `perPage` (en çok 250; `page` verilip `perPage` verilmezse 50, ikisi de verilmezse 250) alır; yanıt `pagination` (`page`, `perPage`, `total`, `lastPage`, `hasMorePages()`) taşır.
+- **Sorgularda sayfalama:** `RetrievePayments`, `RetrieveOrders`, `RetrieveSubscriptions`, `RetrievePaymentLinks`, `RetrieveLinkPayments` ve `RetrieveSavedCards` isteğe bağlı `page` ve `perPage` (en çok 250; `page` verilip `perPage` verilmezse 50) alır; fabrika metotlarıyla kurulan isteğe `withPage($page, $perPage)` eklenir. `PaymentList`, `OrderList`, `SubscriptionList`, `PaymentLinkList`, `LinkPaymentList` ve `SavedCardList` `pagination` (`Pagination`) taşır; geçit her yanıtta gönderir. Var olan kod değişmeden derlenir ve çalışır, ancak geçidin davranışı değişti: sayfa istemeyen bir sorgu artık bütün kayıtları değil ilk 250 kaydı döner; daha fazlası olabilecek sorgularda `pagination->total`'a bakıp sayfa sayfa dolaşın.
+
+Değişenler:
+
+- **Dönüş adresleri:** `callbackUrl`, `successUrl` ve `cancelUrl` açıklamaları geçidin kuralını yazar: canlıda internetten erişilebilen https adresi, sandbox'ta `localhost` ve `.test` dahil her http/https adresi. `Item::$image` http ya da https olabilir. Kod değişmedi.
+- **404 açıklaması:** `NotFoundException` ve README hata tablosu 404'ün yalnızca token'la adlandırılan güncelleme, silme, iade ve iptal çağrılarında döndüğünü, sorguların bulunamayan kaydı boş liste olarak döndüğünü söyler.
+- **Belgelenen sınırlar:** bir istekte en çok 100 kalem; `updatePaymentLink()` ve `updateBankAccount()` yalnızca token'la çağrılırsa 422.
+- **Gönderim adresi:** `Customer::$shippingAddress` açıklaması ve README, gönderim adresinin yalnızca sekiz kişi alanını aldığını, şirket alanlarıyla 422 döndüğünü söyler.
+
+Kırıcı değişiklik:
+
+- **`RefundStatus` kaldırıldı;** geçit iade durumu döndürmediği için hiçbir yanıtta kullanılmıyordu.
 
 ### 1.0.5
 

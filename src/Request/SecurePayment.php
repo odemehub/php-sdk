@@ -19,7 +19,7 @@ final readonly class SecurePayment extends Payment
         int $installmentNumber,
         string $ip,
         PaymentCustomer $customer,
-        /** Where the customer's browser is posted back to once the bank has answered. An https address reachable from the internet. */
+        /** Where the customer's browser is posted back to once the bank has answered. On the live gateway an https address reachable from the internet; on the sandbox any http or https address, localhost and `.test` included. */
         public string $callbackUrl,
         ?Card $card = null,
         ?string $savedCardToken = null,

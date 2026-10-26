@@ -22,7 +22,7 @@ final readonly class Item
         public ?string $taxRate = null,
         /** The merchant's own key for what is on the line, if it has one. */
         public ?string $reference = null,
-        /** The https address of the picture shown beside the line at checkout. */
+        /** The http or https address of the picture shown beside the line at checkout. */
         public ?string $image = null,
         /**
          * Whether the line is also kept on the team's product list: written

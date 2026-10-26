@@ -231,6 +231,61 @@ final class Client
     }
 
     /**
+     * The banks whose accounts may be added for Banka Hareketleri, each
+     * with the credentials it asks for.
+     */
+    public function retrieveBanks(Request\RetrieveBanks $banks): Response\BankList
+    {
+        return Response\BankList::fromArray($this->send($banks));
+    }
+
+    /**
+     * Add a bank account whose movements are to be read. The bank is asked
+     * first; credentials it turns down add nothing, and the answer says
+     * why. Keep the token: the account's movements are asked for by it.
+     */
+    public function createBankAccount(Request\CreateBankAccount $bankAccount): Response\BankAccountDetails
+    {
+        return Response\BankAccountDetails::fromArray($this->send($bankAccount));
+    }
+
+    /**
+     * Bank accounts as they stand — by token, or every account of the
+     * team's — each with when its movements were last read from the bank.
+     */
+    public function retrieveBankAccounts(Request\RetrieveBankAccounts $bankAccounts): Response\BankAccountList
+    {
+        return Response\BankAccountList::fromArray($this->send($bankAccounts));
+    }
+
+    /**
+     * Rename a bank account or replace its credentials. New credentials
+     * are tried against the bank first; ones it turns down change nothing.
+     */
+    public function updateBankAccount(Request\UpdateBankAccount $bankAccount): Response\BankAccountDetails
+    {
+        return Response\BankAccountDetails::fromArray($this->send($bankAccount));
+    }
+
+    /**
+     * Remove a bank account, with every movement read off it.
+     */
+    public function deleteBankAccount(Request\DeleteBankAccount $bankAccount): Response\DeletedBankAccount
+    {
+        return Response\DeletedBankAccount::fromArray($this->send($bankAccount));
+    }
+
+    /**
+     * The movements on one or more bank accounts over at most seven days,
+     * a page at a time, oldest first. They are read from what the gateway
+     * keeps, which it reads from the bank within the hour.
+     */
+    public function retrieveBankTransactions(Request\RetrieveBankTransactions $bankTransactions): Response\BankTransactionList
+    {
+        return Response\BankTransactionList::fromArray($this->send($bankTransactions));
+    }
+
+    /**
      * Read a word the gateway posted to one of the merchant's webhook
      * addresses. Hand it the request exactly as it arrived — the method,
      * the path of the address it came to (without the query string), the

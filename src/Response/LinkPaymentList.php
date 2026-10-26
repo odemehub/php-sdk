@@ -25,6 +25,8 @@ final readonly class LinkPaymentList
         /** The last day listed, the same way. */
         public ?string $createdTo,
         public array $linkPayments,
+        /** Which page this is and how many there are. The gateway always says; null only if an answer ever comes without it. */
+        public ?Pagination $pagination = null,
     ) {}
 
     /**
@@ -32,11 +34,14 @@ final readonly class LinkPaymentList
      */
     public static function fromArray(array $body): self
     {
+        $pagination = self::object($body['pagination'] ?? null);
+
         return new self(
             result: Result::fromArray($body),
             createdFrom: self::said($body['created_from'] ?? null),
             createdTo: self::said($body['created_to'] ?? null),
             linkPayments: self::each($body['link_payments'] ?? null, LinkPayment::fromArray(...)),
+            pagination: $pagination === null ? null : Pagination::fromArray($pagination),
         );
     }
 }

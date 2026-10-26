@@ -42,4 +42,8 @@ echo '<a class="button" href="cards.php">Kayıtlı kartlar</a>';
 echo '<a class="button" href="bin.php">Kart sorgulama</a>';
 echo '</div>';
 
+echo '<h2>Banka hareketleri</h2><div class="actions">';
+echo '<a class="button" href="banks.php">Hesaplar ve hareketler</a>';
+echo '</div>';
+
 pageEnd();

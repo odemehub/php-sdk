@@ -26,17 +26,17 @@ use Gurmehub\Odemehub\Enum\Currency;
 abstract readonly class CheckoutMessage extends Message
 {
     /**
-     * @param  list<Item>|null  $items  What it is for; at least one line when opening. Sent on a change, they replace every line there was.
+     * @param  list<Item>|null  $items  What it is for; at least one line when opening, at most 100. Sent on a change, they replace every line there was.
      */
     public function __construct(
         /** The reference it is known by in the calling system. Has to carry at least one digit. */
         public ?string $reference = null,
-        /** Where the customer's browser is posted back to once it is paid, with the payment's token. An https address reachable from the internet. */
+        /** Where the customer's browser is posted back to once it is paid, with the payment's token. On the live gateway an https address reachable from the internet; on the sandbox any http or https address, localhost and `.test` included. */
         public ?string $successUrl = null,
         public ?array $items = null,
         /** Who it is for, as far as it is known. */
         public ?Customer $customer = null,
-        /** Where the customer goes if they turn back without paying; shown as a link on the checkout page. */
+        /** Where the customer goes if they turn back without paying; shown as a link on the checkout page. Held to the same rule as `successUrl`. */
         public ?string $cancelUrl = null,
         public ?string $description = null,
         /** Left out, the gateway takes the lira. */

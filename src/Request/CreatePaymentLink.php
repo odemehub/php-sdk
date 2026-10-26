@@ -27,7 +27,7 @@ use Gurmehub\Odemehub\Enum\TaxMode;
 final readonly class CreatePaymentLink extends Message
 {
     /**
-     * @param  list<Item>|null  $items  What the link is for: at least one line on a link of lines (`fixed`, the default); passed over for the other amount types.
+     * @param  list<Item>|null  $items  What the link is for: at least one line, at most 100, on a link of lines (`fixed`, the default); passed over for the other amount types.
      * @param  list<string>|null  $predefinedAmounts  The amounts the payer picks from, for `predefined` and `predefined_and_custom`; at most ten.
      * @param  list<Currency>|null  $currencies  The money the payer may pick from, for `selectable`; the link's own currency is always among them.
      */
