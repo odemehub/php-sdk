@@ -75,6 +75,8 @@ final readonly class Subscription
         public bool $locksCustomer = false,
         /** Whether the customer is sent an e-mail at their billing address. */
         public bool $emailsCustomer = false,
+        /** The most instalments the checkout page offers, for individual and commercial cards apart; null when no limit was set. */
+        public ?MaxInstallments $maxInstallments = null,
     ) {}
 
     /**
@@ -130,6 +132,7 @@ final readonly class Subscription
         $shippingMethod = self::object($subscription['shipping_method'] ?? null);
         $customer = self::object($subscription['customer'] ?? null);
         $discount = self::object($subscription['discount'] ?? null);
+        $maxInstallments = self::object($subscription['max_installments'] ?? null);
 
         return new self(
             token: self::text($subscription['token'] ?? null),
@@ -158,6 +161,7 @@ final readonly class Subscription
             requiresShipping: (bool) ($subscription['requires_shipping'] ?? false),
             locksCustomer: (bool) ($subscription['locks_customer'] ?? false),
             emailsCustomer: (bool) ($subscription['emails_customer'] ?? false),
+            maxInstallments: $maxInstallments === null ? null : MaxInstallments::fromArray($maxInstallments),
         );
     }
 }

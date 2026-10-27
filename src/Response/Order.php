@@ -66,6 +66,8 @@ final readonly class Order
         public bool $locksCustomer = false,
         /** Whether the customer is sent an e-mail at their billing address. */
         public bool $emailsCustomer = false,
+        /** The most instalments the checkout page offers, for individual and commercial cards apart; null when no limit was set. */
+        public ?MaxInstallments $maxInstallments = null,
     ) {}
 
     /**
@@ -85,6 +87,7 @@ final readonly class Order
         $transaction = self::object($order['transaction'] ?? null);
         $customer = self::object($order['customer'] ?? null);
         $discount = self::object($order['discount'] ?? null);
+        $maxInstallments = self::object($order['max_installments'] ?? null);
 
         return new self(
             token: self::text($order['token'] ?? null),
@@ -108,6 +111,7 @@ final readonly class Order
             requiresShipping: (bool) ($order['requires_shipping'] ?? false),
             locksCustomer: (bool) ($order['locks_customer'] ?? false),
             emailsCustomer: (bool) ($order['emails_customer'] ?? false),
+            maxInstallments: $maxInstallments === null ? null : MaxInstallments::fromArray($maxInstallments),
         );
     }
 }

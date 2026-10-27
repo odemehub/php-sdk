@@ -66,6 +66,13 @@ abstract readonly class CheckoutMessage extends Message
          * stands changes.
          */
         public ?bool $emailsCustomer = null,
+        /**
+         * The most instalments the checkout page offers, for individual and
+         * commercial cards apart. Left out, the team's own installment
+         * settings hold; sent on a change, it takes the place of the limit
+         * there was, and one with both null lifts it.
+         */
+        public ?MaxInstallments $maxInstallments = null,
     ) {}
 
     /**
@@ -90,6 +97,7 @@ abstract readonly class CheckoutMessage extends Message
             'requires_shipping' => $this->requiresShipping,
             'locks_customer' => $this->locksCustomer,
             'emails_customer' => $this->emailsCustomer,
+            'max_installments' => $this->maxInstallments?->toArray(),
             'items' => $this->items === null ? null : array_map(
                 static fn (Item $item): array => $item->toArray(),
                 $this->items,

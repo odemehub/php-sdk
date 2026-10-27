@@ -34,6 +34,7 @@ final readonly class CreateSubscription extends CheckoutMessage
         ?bool $requiresShipping = null,
         ?bool $locksCustomer = null,
         ?bool $emailsCustomer = null,
+        ?MaxInstallments $maxInstallments = null,
     ) {
         parent::__construct(
             reference: $reference,
@@ -47,6 +48,7 @@ final readonly class CreateSubscription extends CheckoutMessage
             requiresShipping: $requiresShipping,
             locksCustomer: $locksCustomer,
             emailsCustomer: $emailsCustomer,
+            maxInstallments: $maxInstallments,
         );
     }
 

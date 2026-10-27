@@ -34,6 +34,7 @@ final readonly class UpdateOrder extends CheckoutMessage
         ?bool $requiresShipping = null,
         ?bool $locksCustomer = null,
         ?bool $emailsCustomer = null,
+        ?MaxInstallments $maxInstallments = null,
         public array $clear = [],
     ) {
         parent::__construct(
@@ -48,6 +49,7 @@ final readonly class UpdateOrder extends CheckoutMessage
             requiresShipping: $requiresShipping,
             locksCustomer: $locksCustomer,
             emailsCustomer: $emailsCustomer,
+            maxInstallments: $maxInstallments,
         );
     }
 

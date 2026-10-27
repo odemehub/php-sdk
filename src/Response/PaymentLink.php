@@ -70,6 +70,8 @@ final readonly class PaymentLink
         public ?array $currencies = null,
         /** Whether the payer is sent an e-mail, at the address they give on the checkout page, once their payment goes through. */
         public bool $emailsCustomer = false,
+        /** The most instalments the checkout page offers, for individual and commercial cards apart; null when no limit was set. */
+        public ?MaxInstallments $maxInstallments = null,
     ) {}
 
     /**
@@ -98,6 +100,8 @@ final readonly class PaymentLink
      */
     public static function fromArray(array $link): self
     {
+        $maxInstallments = self::object($link['max_installments'] ?? null);
+
         return new self(
             token: self::text($link['token'] ?? null),
             reference: self::text($link['reference'] ?? null),
@@ -130,6 +134,7 @@ final readonly class PaymentLink
                 )))
                 : null,
             emailsCustomer: (bool) ($link['emails_customer'] ?? false),
+            maxInstallments: $maxInstallments === null ? null : MaxInstallments::fromArray($maxInstallments),
         );
     }
 }

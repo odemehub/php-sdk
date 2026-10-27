@@ -145,7 +145,7 @@ Müşteri hiç dönmezse panelde tanımladığınız webhook adresi yine de habe
 Kart sizde sorulmaz. Siparişi açarsınız, geçit kendi ödeme sayfasının adresini döner, müşteri orada öder. Tutar gönderilmez: geçit kalemleri ve seçilen gönderim yöntemini toplar. Birim tutarlar KDV dahildir.
 
 ```php
-use Gurmehub\Odemehub\Request\{CreateOrder, Item};
+use Gurmehub\Odemehub\Request\{CreateOrder, Item, MaxInstallments};
 
 $order = $client->createOrder(new CreateOrder(
     reference: 'SIP-10233',
@@ -157,6 +157,7 @@ $order = $client->createOrder(new CreateOrder(
     requiresShipping: true,            // ödeyen adresini ve panelinizdeki gönderim yöntemlerinden birini seçer
     cancelUrl: 'https://magazam.com/sepet',
     emailsCustomer: true,              // ödeme tamamlanınca fatura adresindeki e-postaya bilgilendirme gider; boş: gitmez
+    maxInstallments: new MaxInstallments(individual: 6, commercial: 1), // bireysel kartta en çok 6 taksit, ticari kartta tek çekim
 ));
 
 $order->order->token;              // saklayın: siparişi bundan sonra bununla güncellersiniz ve sorgularsınız
@@ -167,6 +168,8 @@ $order->order->amount;             // geçidin hesapladığı toplam
 **Kupon.** API'de kupon alanı yoktur; ödeyen kodu ödeme sayfasında girer. Kupon kullanılan siparişte `$order->discount` (`code`, `amount`) dolu gelir, kullanılmadıysa `null`'dır. Siparişin `subtotal`, `taxAmount` ve `amount` değerleri indirim düşülmüş tutarlardır; kupon gönderim ücretinden düşülmez.
 
 **Müşteri kilidi.** `locksCustomer: true` gönderilirse ödeme sayfası müşteri bilgisi sormaz; gönderdiğiniz müşteriyi değiştirilemez şekilde gösterir ve ödemeyi onunla alır. Bu durumda fatura adresi eksiksiz olmalıdır; `requiresShipping: true` ise gönderim adresi de (gönderilmezse fatura adresi kullanılır). Gönderim adresi (`shippingAddress`) yalnızca sekiz kişi alanını alır; şirket unvanı, vergi numarası ya da vergi dairesi verilirse geçit 422 döner. Eksik alan varsa geçit 422 ile reddeder. Yanıttaki `requiresShipping`, `locksCustomer` ve `emailsCustomer` kaydın bu ayarlarını verir.
+
+**Taksit sınırı.** `maxInstallments` ödeme sayfasında sunulacak en yüksek taksit sayısını bireysel (`individual`) ve ticari (`commercial`) kart için ayrı ayrı sınırlar: her biri 1–12, `1` yalnızca tek çekim, `null` o kart tipinde sınır yok. Sipariş, abonelik ve ödeme linkinde (`Create*` / `Update*`) aynı şekilde gönderilir. Güncellemede gönderilen sınır öncekinin yerini alır, gönderilmezse değişmez; `new MaxInstallments()` (ikisi de `null`) sınırı kaldırır. Yanıttaki `maxInstallments` (`Order`, `Subscription`, `PaymentLink`) sınır yoksa `null`'dır.
 
 `saveAsProduct: true` olan kalem referansıyla ürün listenize yazılır (referans zorunlu). Gönderim yöntemleri istekte gönderilmez: panelinizdeki **Gönderim Yöntemleri** listesinden ödeyenin adresine uyanlar sunulur, seçilen `$order->order->shippingMethod` olarak döner.
 
@@ -523,6 +526,12 @@ Sınırlar çalışma alanı başına ve dakikalıktır:
 Aşıldığında 429 ve `RateLimitException` döner; `retryAfter` kadar bekleyip aynı isteği yeniden gönderin.
 
 ## Değişiklikler
+
+### 1.0.7
+
+Eklenenler:
+
+- **Taksit sınırı:** `MaxInstallments` (`individual`, `commercial`; istek için `Request\MaxInstallments`, yanıt için `Response\MaxInstallments`). `CreateOrder`, `UpdateOrder`, `CreateSubscription`, `UpdateSubscription`, `CreatePaymentLink` ve `UpdatePaymentLink` `maxInstallments` alır; `Order`, `Subscription` ve `PaymentLink` yanıtları `maxInstallments` taşır (yoksa `null`). Güncellemede `new MaxInstallments()` sınırı kaldırır.
 
 ### 1.0.6
 

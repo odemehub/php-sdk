@@ -46,6 +46,8 @@ final readonly class UpdatePaymentLink extends Message
         public ?array $currencies = null,
         /** Whether the payer is sent an e-mail, at the address they give on the checkout page, once their payment goes through. */
         public ?bool $emailsCustomer = null,
+        /** Takes the place of the limit there was; one with both null lifts it. */
+        public ?MaxInstallments $maxInstallments = null,
         public array $clear = [],
     ) {}
 
@@ -75,6 +77,7 @@ final readonly class UpdatePaymentLink extends Message
                 $this->currencies,
             ),
             'emails_customer' => $this->emailsCustomer,
+            'max_installments' => $this->maxInstallments?->toArray(),
             'expires_at' => $this->expiresAt,
             'is_active' => $this->isActive,
             'items' => $this->items === null ? null : array_map(
